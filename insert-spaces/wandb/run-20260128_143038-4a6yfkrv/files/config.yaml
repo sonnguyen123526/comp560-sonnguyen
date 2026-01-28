@@ -1,0 +1,115 @@
+_wandb:
+    value:
+        cli_version: 0.24.0
+        e:
+            ljrjzuvd3t4devqrftfw5otutiay9cst:
+                apple:
+                    ecpuCores: 4
+                    gpuCores: 10
+                    memoryGb: 8
+                    name: Apple M2
+                    pcpuCores: 4
+                    ramTotalBytes: "8589934592"
+                    swapTotalBytes: "7516192768"
+                args:
+                    - config/basic.py
+                cpu_count: 8
+                cpu_count_logical: 8
+                disk:
+                    /:
+                        total: "494384795648"
+                        used: "314785914880"
+                email: nguyenso@dickinson.edu
+                executable: /opt/anaconda3/bin/python
+                git:
+                    commit: 8f97ea36dc89ce4d15eb6aadfb08b90b7b656ac6
+                    remote: https://github.com/sonnguyen123526/comp560-sonnguyen.git
+                host: Sons-MacBook-Pro-448.local
+                memory:
+                    total: "8589934592"
+                os: macOS-26.2-arm64-arm-64bit
+                program: /Users/sonnguyen/comp560-sonnguyen/insert-spaces/../../comp560-nanoGPT/train.py
+                python: CPython 3.11.7
+                root: /Users/sonnguyen/comp560-sonnguyen/insert-spaces
+                startedAt: "2026-01-28T19:30:38.804733Z"
+                writerId: ljrjzuvd3t4devqrftfw5otutiay9cst
+        m: []
+        python_version: 3.11.7
+        t:
+            "1":
+                - 1
+            "2":
+                - 1
+            "3":
+                - 13
+                - 16
+            "4": 3.11.7
+            "5": 0.24.0
+            "12": 0.24.0
+            "13": darwin-arm64
+always_save_checkpoint:
+    value: false
+backend:
+    value: nccl
+batch_size:
+    value: 12
+beta1:
+    value: 0.9
+beta2:
+    value: 0.99
+bias:
+    value: false
+block_size:
+    value: 64
+compile:
+    value: false
+dataset:
+    value: basic
+decay_lr:
+    value: true
+device:
+    value: cpu
+dropout:
+    value: 0
+dtype:
+    value: float16
+eval_interval:
+    value: 100
+eval_iters:
+    value: 20
+eval_only:
+    value: false
+grad_clip:
+    value: 1
+gradient_accumulation_steps:
+    value: 1
+init_from:
+    value: scratch
+learning_rate:
+    value: 0.001
+log_interval:
+    value: 1
+lr_decay_iters:
+    value: 2000
+max_iters:
+    value: 2000
+min_lr:
+    value: 0.0001
+n_embd:
+    value: 128
+n_head:
+    value: 4
+n_layer:
+    value: 4
+out_dir:
+    value: out/basic
+wandb_log:
+    value: true
+wandb_project:
+    value: insert-spaces
+wandb_run_name:
+    value: basic-char-level-insert-spacing
+warmup_iters:
+    value: 0
+weight_decay:
+    value: 0.1

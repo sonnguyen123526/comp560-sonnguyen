@@ -1,0 +1,37 @@
+_wandb:
+    value:
+        cli_version: 0.24.0
+        e:
+            5v6k06ajy9dz1s9vip4orpbrkunwc0ah:
+                codePath: test.py
+                codePathLocal: test.py
+                email: nguyenso@dickinson.edu
+                executable: /opt/anaconda3/bin/python
+                git:
+                    commit: 8f97ea36dc89ce4d15eb6aadfb08b90b7b656ac6
+                    remote: https://github.com/sonnguyen123526/comp560-sonnguyen.git
+                host: Sons-MacBook-Pro-448.local
+                os: macOS-26.2-arm64-arm-64bit
+                program: /Users/sonnguyen/comp560-sonnguyen/test.py
+                python: CPython 3.11.7
+                root: /Users/sonnguyen/comp560-sonnguyen
+                startedAt: "2026-01-28T19:27:46.680827Z"
+                writerId: 5v6k06ajy9dz1s9vip4orpbrkunwc0ah
+        m: []
+        python_version: 3.11.7
+        t:
+            "3":
+                - 2
+                - 16
+            "4": 3.11.7
+            "5": 0.24.0
+            "12": 0.24.0
+            "13": darwin-arm64
+architecture:
+    value: CNN
+dataset:
+    value: CIFAR-100
+epochs:
+    value: 10
+learning_rate:
+    value: 0.02

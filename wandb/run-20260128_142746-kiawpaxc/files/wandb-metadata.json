@@ -1,0 +1,17 @@
+{
+  "os": "macOS-26.2-arm64-arm-64bit",
+  "python": "CPython 3.11.7",
+  "startedAt": "2026-01-28T19:27:46.680827Z",
+  "program": "/Users/sonnguyen/comp560-sonnguyen/test.py",
+  "codePath": "test.py",
+  "codePathLocal": "test.py",
+  "git": {
+    "remote": "https://github.com/sonnguyen123526/comp560-sonnguyen.git",
+    "commit": "8f97ea36dc89ce4d15eb6aadfb08b90b7b656ac6"
+  },
+  "email": "nguyenso@dickinson.edu",
+  "root": "/Users/sonnguyen/comp560-sonnguyen",
+  "host": "Sons-MacBook-Pro-448.local",
+  "executable": "/opt/anaconda3/bin/python",
+  "writerId": "5v6k06ajy9dz1s9vip4orpbrkunwc0ah"
+}

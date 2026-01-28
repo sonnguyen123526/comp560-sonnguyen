@@ -1,0 +1,38 @@
+{
+  "os": "macOS-26.2-arm64-arm-64bit",
+  "python": "CPython 3.11.7",
+  "startedAt": "2026-01-28T19:30:38.804733Z",
+  "args": [
+    "config/basic.py"
+  ],
+  "program": "/Users/sonnguyen/comp560-sonnguyen/insert-spaces/../../comp560-nanoGPT/train.py",
+  "git": {
+    "remote": "https://github.com/sonnguyen123526/comp560-sonnguyen.git",
+    "commit": "8f97ea36dc89ce4d15eb6aadfb08b90b7b656ac6"
+  },
+  "email": "nguyenso@dickinson.edu",
+  "root": "/Users/sonnguyen/comp560-sonnguyen/insert-spaces",
+  "host": "Sons-MacBook-Pro-448.local",
+  "executable": "/opt/anaconda3/bin/python",
+  "cpu_count": 8,
+  "cpu_count_logical": 8,
+  "disk": {
+    "/": {
+      "total": "494384795648",
+      "used": "314785914880"
+    }
+  },
+  "memory": {
+    "total": "8589934592"
+  },
+  "apple": {
+    "name": "Apple M2",
+    "ecpuCores": 4,
+    "pcpuCores": 4,
+    "gpuCores": 10,
+    "memoryGb": 8,
+    "swapTotalBytes": "7516192768",
+    "ramTotalBytes": "8589934592"
+  },
+  "writerId": "ljrjzuvd3t4devqrftfw5otutiay9cst"
+}
