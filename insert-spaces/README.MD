@@ -54,6 +54,11 @@ Input: pqreky Output: e q r d           (Expected: p q r e k y)
 
 ---
 
+---
+## Graph Loss
+# max_iters = 2000
+---
+
 ## Conclusions
 
 ### What Didn't Work
