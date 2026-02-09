@@ -1,83 +1,160 @@
-# COMP 560 - NanoGPT Experiments
+# COMP 560 - Liberating Chain-of-thought Reasoning in Large Language Models
 
-This repository contains experiments training small GPT models on character-level tasks using Andrej Karpathy's [nanoGPT](https://github.com/karpathy/nanoGPT).
+Experiments with small GPT models on character-level tasks and arithmetic reasoning, using Andrej Karpathy's [nanoGPT](https://github.com/karpathy/nanoGPT).
 
 ## Projects
 
-### 1. Insert Spaces Between Characters ([insert-spaces/](insert-spaces/))
-**Goal:** Train GPT to insert spaces between letters (e.g., "hello" → "h e l l o")
+### 1. Arithmetic with Scratchpad ([arithmetic-scratchpad/](arithmetic-scratchpad/))
 
-- **Model:** 4-layer GPT (128-dim embeddings, 4 heads, 0.79M params)
-- **Dataset:** 3,000+ unique words (3-8 letters, a-z)
-- **Result:** Model struggled with task (val loss: 1.17) - see [insert-spaces/README.MD](insert-spaces/README.MD) for full analysis
+Testing if transformers learn better when shown intermediate reasoning steps during addition.
 
-### 2. Vietnamese-English Number Translation ([translation/](translation/))
-**Goal:** Train GPT to translate Vietnamese numbers (0-20) to English
+**The idea:** Compare a baseline model (direct `123+456->579`) vs. a scratchpad model that shows step-by-step work (`123+456->3+6=9,2+5=7,1+4=5->579`).
 
-- **Model:** 6-layer GPT (192-dim embeddings, 6 heads, ~2M params)
-- **Dataset:** 50,000 translation pairs (e.g., "một" → "one")
-- **Result:** Successfully translates most numbers (val loss: 0.80) - see [translation/README.MD](translation/README.MD) for full analysis
+- Train on 2-3 digit addition with 50k samples
+- Both models use identical architecture (4 layers, 4 heads, 128d)
+- Based on "How Far Can Transformers Reason?" (Anil et al., 2024)
 
-## Quick Start
+See [arithmetic-scratchpad/README.md](arithmetic-scratchpad/README.md) for details.
 
-### Training a Model
+### 2. Arithmetic Length Generalization ([arithmetic-length-generalization/](arithmetic-length-generalization/))
 
-```bash
-# Navigate to project directory (insert-spaces or translation)
-cd insert-spaces  # or: cd translation
+Testing if transformers can generalize from short to long numbers using complex scratchpad formats from the paper.
 
-# Generate dataset
-cd data && python prepare.py
-cd ..
+**Two methods:**
+- **Random spaces:** Embeds numbers with underscores and position pointers
+- **Cyclic shifts:** Uses cyclic rotation with explicit state tracking
 
-# Train model
-NANOGPT_CONFIG=../../comp560-nanoGPT/configurator.py python -u ../../comp560-nanoGPT/train.py config/basic.py
-```
+Challenge: Train on 2-3 digits, test on 10+ digits. The paper shows these formats enable length generalization.
 
-### Sampling from Trained Model
+See [arithmetic-length-generalization/README.md](arithmetic-length-generalization/README.md) for details.
 
-```bash
-# Generate samples from trained model
-NANOGPT_CONFIG=../../comp560-nanoGPT/configurator.py python -u ../../comp560-nanoGPT/sample.py config/basic.py --num_samples=5 --max_new_tokens=100 --seed=2
-```
+### 3. Insert Spaces ([insert-spaces/](insert-spaces/))
 
-## Key Findings
+Early experiment training GPT to insert spaces between letters.
 
-**What Worked:**
-- Larger architecture (6 layers, 192 dims) performs better than smaller (4 layers, 128 dims)
-- Dropout (0.1) and warmup (100 iters) stabilize training
-- Simple data format (e.g., `một -> one`) works better than verbose format
-- Translation task succeeded where insert-spaces struggled
+- Task: "hello" → "h e l l o"
+- Dataset: 3,000+ words (3-8 letters)
+- Model: 4-layer GPT (0.79M params)
+- Result: Model struggled (val loss: 1.17)
 
-**What Didn't Work:**
-- Small models (4 layers) insufficient for complex character manipulation
-- No dropout can hurt generalization
-- Loss alone doesn't indicate task success - must check actual outputs
+See [insert-spaces/README.MD](insert-spaces/README.MD) for analysis.
+
+### 4. Vietnamese-English Translation ([translation/](translation/))
+
+Training GPT to translate Vietnamese numbers (0-20) to English.
+
+- Dataset: 50,000 pairs ("một" → "one")
+- Model: 6-layer GPT (2M params)
+- Result: Successfully translates most numbers (val loss: 0.80)
+
+See [translation/README.MD](translation/README.MD) for analysis.
 
 ## Repository Structure
 
 ```
 comp560-sonnguyen/
-├── README.md              # This file
-├── insert-spaces/         # Character spacing project
-│   ├── README.MD         # Detailed analysis
-│   ├── config/           # Model hyperparameters
-│   ├── data/             # Dataset generation scripts
-│   └── out/              # Trained model checkpoints
-├── translation/           # Vietnamese-English translation project
-│   ├── README.MD         # Detailed analysis
-│   ├── config/           # Model hyperparameters
-│   ├── data/             # Dataset generation scripts
-│   └── out/              # Trained model checkpoints
-└── test.py               # WandB integration test
+├── README.md                         # This file
+├── arithmetic-scratchpad/            # Scratchpad reasoning experiment
+│   ├── config/                       # Training configs (with/without scratchpad)
+│   ├── data/                         # Dataset generation + tokenization
+│   ├── out/                          # Model checkpoints
+│   └── wandb/                        # Training logs
+├── arithmetic-length-generalization/ # Length generalization experiment
+│   ├── config/                       # Training configs (random_spaces, cyclic_shifts)
+│   ├── data/                         # Dataset generation + tokenization
+│   ├── out/                          # Model checkpoints
+│   └── wandb/                        # Training logs
+├── insert-spaces/                    # Character spacing experiment
+│   ├── config/
+│   ├── data/
+│   └── seq2seq_model_testing/       # Alternative seq2seq approach
+├── translation/                      # Vietnamese-English number translation
+│   ├── config/
+│   └── data/
+├── assets/                           # Plots and figures
+└── wandb/                            # Shared training logs
 ```
+
+## Quick Start
+
+### Arithmetic Experiments
+
+```bash
+# Generate and tokenize data (combined script)
+cd arithmetic-scratchpad/data
+python prepare_tokenized.py
+cd ../..
+
+# Train baseline (no scratchpad)
+cd arithmetic-scratchpad
+NANOGPT_CONFIG=../../comp560-nanoGPT/configurator.py \
+  python -u ../../comp560-nanoGPT/train.py config/without_scratchpad.py
+
+# Train with scratchpad
+NANOGPT_CONFIG=../../comp560-nanoGPT/configurator.py \
+  python -u ../../comp560-nanoGPT/train.py config/with_scratchpad.py
+```
+
+### Length Generalization
+
+```bash
+# Generate datasets
+cd arithmetic-length-generalization/data
+python generate_random_space.py      # Random spaces method
+python generate_using_shifts.py      # Cyclic shifts method
+python prepare_tokenized.py          # Tokenize both
+cd ../..
+
+# Train models
+cd arithmetic-length-generalization
+NANOGPT_CONFIG=../../comp560-nanoGPT/configurator.py \
+  python -u ../../comp560-nanoGPT/train.py config/random_spaces.py
+```
+
+### Sample from trained model
+
+```bash
+NANOGPT_CONFIG=../../comp560-nanoGPT/configurator.py \
+  python -u ../../comp560-nanoGPT/sample.py config/with_scratchpad.py \
+  --num_samples=10 --max_new_tokens=200
+```
+
+## Key Findings
+
+**Architecture matters:**
+- Larger models (6 layers, 192d) outperform smaller ones (4 layers, 128d)
+- Dropout (0.1) and warmup help stabilization
+
+**Data format matters:**
+- Simple formats work better than verbose ones
+- Scratchpad shows promise for multi-step reasoning
+- Position-invariant encoding helps length generalization
+
+**Evaluation is crucial:**
+- Low loss doesn't guarantee task success
+- Must check actual outputs for correctness
 
 ## Requirements
 
 - Python 3.8+
 - PyTorch
 - NumPy
-- [nanoGPT](https://github.com/karpathy/nanoGPT) (configured via `NANOGPT_CONFIG` environment variable)
+- [nanoGPT](https://github.com/karpathy/nanoGPT)
+
+Set `NANOGPT_CONFIG` environment variable to point to nanoGPT's configurator.
+
+## Reference
+
+```bibtex
+@article{anil2024transformers,
+  title={How Far Can Transformers Reason? The Globality Barrier and Inductive Scratchpad},
+  author={Anil, Cem and Wu, Yuhuai and Andreassen, Anders and Lewkowycz, Aitor and 
+          Misra, Vedant and Ramasesh, Vinay and Slone, Ambrose and Gur-Ari, Guy and 
+          Dyer, Ethan and Neyshabur, Behnam},
+  journal={arXiv preprint arXiv:2406.06467},
+  year={2024}
+}
+```
 
 ## License
 
