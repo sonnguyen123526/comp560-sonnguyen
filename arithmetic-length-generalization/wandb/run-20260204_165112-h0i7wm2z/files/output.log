@@ -1,0 +1,11 @@
+Traceback (most recent call last):
+  File "/Users/sonnguyen/comp560-sonnguyen/arithmetic-length-generalization/../../comp560-nanoGPT/train.py", line 251, in <module>
+    X, Y = get_batch('train') # fetch the very first batch
+           ^^^^^^^^^^^^^^^^^^
+  File "/Users/sonnguyen/comp560-sonnguyen/arithmetic-length-generalization/../../comp560-nanoGPT/train.py", line 121, in get_batch
+    data = np.memmap(os.path.join(data_dir, 'train.bin'), dtype=np.uint16, mode='r')
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/lib/python3.11/site-packages/numpy/core/memmap.py", line 229, in __new__
+    f_ctx = open(os_fspath(filename), ('r' if mode == 'c' else mode)+'b')
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'data/random_spaces/train.bin'

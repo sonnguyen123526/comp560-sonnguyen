@@ -1,0 +1,11 @@
+{"time":"2026-02-04T16:00:21.794624-05:00","level":"INFO","msg":"stream: starting","core version":"0.24.0"}
+{"time":"2026-02-04T16:00:22.031137-05:00","level":"INFO","msg":"stream: created new stream","id":"unddsyls"}
+{"time":"2026-02-04T16:00:22.031443-05:00","level":"INFO","msg":"handler: started","stream_id":"unddsyls"}
+{"time":"2026-02-04T16:00:22.031491-05:00","level":"INFO","msg":"writer: started","stream_id":"unddsyls"}
+{"time":"2026-02-04T16:00:22.031609-05:00","level":"INFO","msg":"stream: started","id":"unddsyls"}
+{"time":"2026-02-04T16:00:22.031636-05:00","level":"INFO","msg":"sender: started","stream_id":"unddsyls"}
+{"time":"2026-02-04T16:02:20.488094-05:00","level":"INFO","msg":"stream: closing","id":"unddsyls"}
+{"time":"2026-02-04T16:02:20.763825-05:00","level":"INFO","msg":"fileTransfer: Close: file transfer manager closed"}
+{"time":"2026-02-04T16:02:20.947284-05:00","level":"INFO","msg":"handler: closed","stream_id":"unddsyls"}
+{"time":"2026-02-04T16:02:20.947947-05:00","level":"INFO","msg":"sender: closed","stream_id":"unddsyls"}
+{"time":"2026-02-04T16:02:20.94801-05:00","level":"INFO","msg":"stream: closed","id":"unddsyls"}

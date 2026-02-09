@@ -1,0 +1,38 @@
+{
+  "os": "macOS-26.2-arm64-arm-64bit",
+  "python": "CPython 3.11.7",
+  "startedAt": "2026-02-04T04:23:18.269863Z",
+  "args": [
+    "config/without_scratchpad.py"
+  ],
+  "program": "/Users/sonnguyen/comp560-sonnguyen/arithmetic-scratchpad/../../comp560-nanoGPT/train.py",
+  "git": {
+    "remote": "https://github.com/sonnguyen123526/comp560-sonnguyen.git",
+    "commit": "2f9f49ae6bb8adca3da2956dd2cf699cd07e58a4"
+  },
+  "email": "nguyenso@dickinson.edu",
+  "root": "/Users/sonnguyen/comp560-sonnguyen/arithmetic-scratchpad",
+  "host": "Sons-MacBook-Pro-448.local",
+  "executable": "/opt/anaconda3/bin/python",
+  "cpu_count": 8,
+  "cpu_count_logical": 8,
+  "disk": {
+    "/": {
+      "total": "494384795648",
+      "used": "321608953856"
+    }
+  },
+  "memory": {
+    "total": "8589934592"
+  },
+  "apple": {
+    "name": "Apple M2",
+    "ecpuCores": 4,
+    "pcpuCores": 4,
+    "gpuCores": 10,
+    "memoryGb": 8,
+    "swapTotalBytes": "8589934592",
+    "ramTotalBytes": "8589934592"
+  },
+  "writerId": "6v2k22wrtwrjd7mrc2dsta5yqhy1nlts"
+}
