@@ -1,0 +1,64 @@
+step 0: train loss 2.9392, val loss 2.9387
+iter 0: loss 2.9419, time 1102.66ms, mfu -100.00%
+iter 1: loss 2.6406, time 47.04ms, mfu -100.00%
+iter 2: loss 2.5371, time 45.51ms, mfu -100.00%
+iter 3: loss 2.4769, time 49.95ms, mfu -100.00%
+iter 4: loss 2.4392, time 84.60ms, mfu -100.00%
+iter 5: loss 2.3203, time 67.95ms, mfu 0.04%
+iter 6: loss 2.2657, time 80.70ms, mfu 0.04%
+iter 7: loss 2.2325, time 76.36ms, mfu 0.04%
+iter 8: loss 2.2109, time 47.79ms, mfu 0.04%
+iter 9: loss 2.1764, time 48.76ms, mfu 0.04%
+iter 10: loss 2.1610, time 48.58ms, mfu 0.04%
+iter 11: loss 2.1637, time 42.87ms, mfu 0.05%
+iter 12: loss 2.1438, time 49.07ms, mfu 0.05%
+iter 13: loss 2.1326, time 47.64ms, mfu 0.05%
+iter 14: loss 2.1331, time 41.38ms, mfu 0.05%
+iter 15: loss 2.1162, time 51.14ms, mfu 0.05%
+iter 16: loss 2.1100, time 61.69ms, mfu 0.05%
+iter 17: loss 2.0885, time 43.25ms, mfu 0.05%
+iter 18: loss 2.0821, time 79.53ms, mfu 0.05%
+iter 19: loss 2.0913, time 69.80ms, mfu 0.05%
+iter 20: loss 2.0748, time 49.09ms, mfu 0.05%
+iter 21: loss 2.0824, time 45.61ms, mfu 0.05%
+iter 22: loss 2.0769, time 45.22ms, mfu 0.05%
+iter 23: loss 2.0493, time 51.28ms, mfu 0.05%
+iter 24: loss 2.0618, time 45.35ms, mfu 0.05%
+iter 25: loss 2.0271, time 69.81ms, mfu 0.05%
+iter 26: loss 2.0517, time 45.90ms, mfu 0.05%
+iter 27: loss 2.0192, time 45.90ms, mfu 0.05%
+iter 28: loss 2.0292, time 45.69ms, mfu 0.05%
+iter 29: loss 2.0249, time 52.36ms, mfu 0.05%
+iter 30: loss 2.0079, time 47.42ms, mfu 0.05%
+Traceback (most recent call last):
+  File "/Users/sonnguyen/comp560-sonnguyen/arithmetic-scratchpad/../../comp560-nanoGPT/train.py", line 301, in <module>
+    logits, loss = model(X, Y)
+                   ^^^^^^^^^^^
+  File "/opt/anaconda3/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1532, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1541, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/sonnguyen/comp560-nanoGPT/model.py", line 181, in forward
+    x = block(x)
+        ^^^^^^^^
+  File "/opt/anaconda3/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1532, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1541, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/sonnguyen/comp560-nanoGPT/model.py", line 104, in forward
+    x = x + self.attn(self.ln_1(x))
+            ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1532, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1541, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/sonnguyen/comp560-nanoGPT/model.py", line 64, in forward
+    y = torch.nn.functional.scaled_dot_product_attention(q, k, v, attn_mask=None, dropout_p=self.dropout if self.training else 0, is_causal=True)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt
