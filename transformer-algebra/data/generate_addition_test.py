@@ -1,10 +1,5 @@
-# Generate a held-out test set for the addition model.
-#
-# Strategy: same digit length as training (3-digit numbers, 100-999),
-# but only pairs NOT seen in train.txt. There are 900^2 = 810K possible
-# pairs and we only trained on 10K, so there are ~800K unseen pairs.
-#
-# Also stratifies by number of carry operations for detailed analysis.
+# Generate held-out test set for the addition model.
+# Excludes pairs seen in train.txt, stratified by carry count.
 import os
 import random
 
@@ -15,7 +10,6 @@ SEED       = 123
 
 
 def count_carries(a, b):
-    """Count carry operations when adding a + b digit by digit."""
     carries = 0
     carry = 0
     for d in range(max(len(str(a)), len(str(b)))):
@@ -31,7 +25,7 @@ def count_carries(a, b):
 def main():
     random.seed(SEED)
 
-    # Load training pairs so we can exclude them from the test set.
+    # load training pairs to exclude from test set
     seen = set()
     with open(TRAIN_FILE) as f:
         for line in f:
@@ -44,9 +38,6 @@ def main():
             b = int(''.join(parts[1].split()))
             seen.add((a, b))
 
-    print(f"Training pairs loaded: {len(seen):,}")
-
-    # Sample unseen pairs, stratified by carry count.
     buckets = {0: [], 1: [], 2: [], 3: []}
     attempts = 0
     while min(len(v) for v in buckets.values()) < NUM_TEST // 4 and attempts < 10_000_000:

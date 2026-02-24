@@ -11,8 +11,6 @@ import random
 import argparse
 
 def generate_reverse_dataset(output_file, num_samples=10000, max_len=4):
-    """Generate digit reversal samples. Trains on lengths 2..max_len.
-    5-digit sequences are held out as an OOD test set."""
     samples = set()
     while len(samples) < num_samples:
         length = random.randint(2, max_len)
@@ -30,7 +28,6 @@ def generate_reverse_dataset(output_file, num_samples=10000, max_len=4):
     print(f"  e.g. {samples_list[0].strip()}")
 
 def generate_addition_dataset(output_file, num_samples=10000, max_digits=3):
-    """Generate addition samples with spaced digit format."""
     samples = set()
     max_num = 10 ** max_digits - 1
     min_num = 10 ** (max_digits - 1)
@@ -51,9 +48,7 @@ def generate_addition_dataset(output_file, num_samples=10000, max_digits=3):
     print(f"  e.g. {samples_list[0].strip()}")
 
 def generate_composed_dataset(output_file, num_samples=10000, max_digits=3):
-    """Generate reverse-then-add samples.
-    Format: "1 2 3 + 4 5 6 -> 3 2 1 + 6 5 4 -> 9 7 5"
-    """
+    # format: "1 2 3 + 4 5 6 -> 3 2 1 + 6 5 4 -> 9 7 5"
     samples = set()
     max_num = 10 ** max_digits - 1
     min_num = 10 ** (max_digits - 1)
@@ -81,7 +76,6 @@ def generate_composed_dataset(output_file, num_samples=10000, max_digits=3):
     print(f"  e.g. {samples_list[0].strip()}")
 
 def tokenize_data(input_file, output_dir):
-    """Character-level tokenization. Saves train.bin, val.bin, meta.pkl."""
     if not os.path.exists(input_file):
         print(f"tokenize: {input_file} not found, skipping")
         return

@@ -16,7 +16,6 @@ def load_model(ckpt_path, device):
     cfg  = GPTConfig(**ckpt['model_args'])
     model = GPT(cfg)
     sd = ckpt['model']
-    # strip compile prefix if present
     sd = {k.removeprefix('_orig_mod.'): v for k, v in sd.items()}
     model.load_state_dict(sd)
     model.eval()
@@ -25,14 +24,11 @@ def load_model(ckpt_path, device):
 
 @torch.no_grad()
 def greedy_batch(model, all_prompt_ids, max_new, device, batch_size=256):
-    """Run greedy decoding using LEFT-padding so every sequence ends with the
-    actual prompt (not a pad token) before generation starts."""
     pad_id = 0
     results = []
     for start in range(0, len(all_prompt_ids), batch_size):
         batch = all_prompt_ids[start:start + batch_size]
         max_len = max(len(p) for p in batch)
-        # LEFT-pad: prepend zeros so all prompts are the same length
         padded = [[pad_id] * (max_len - len(p)) + p for p in batch]
         x = torch.tensor(padded, dtype=torch.long, device=device)
         prompt_lens = [len(p) for p in batch]

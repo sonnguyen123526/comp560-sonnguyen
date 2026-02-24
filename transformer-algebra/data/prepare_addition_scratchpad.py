@@ -1,11 +1,7 @@
 # Prepare scratchpad addition dataset.
 # Train on 2-digit numbers (10-99), test on 3-digit numbers (100-999).
 #
-# Scratchpad format shows carry propagation step by step:
-#   "2 3 + 4 5 -> C:0 8 C:0 6 -> 6 8"
-#
-# The scratchpad makes the carry operation explicit at each step,
-# which should help the model generalize to longer numbers.
+# Format: "2 3 + 4 5 -> C:0 8 C:0 6 -> 6 8"
 
 import os
 import random
@@ -21,17 +17,6 @@ TEST_FILE  = 'data/addition_scratchpad/test.txt'
 
 
 def make_scratchpad(a, b):
-    """
-    Build a scratchpad trace for a + b.
-
-    Example: 23 + 45
-      digits (LSB first): a=[3,2], b=[5,4]
-      step 0: 3+5+0=8, carry=0  -> "C:0 8"
-      step 1: 2+4+0=6, carry=0  -> "C:0 6"
-      result (MSB first): 68
-
-    Format: "2 3 + 4 5 -> C:0 8 C:0 6 -> 6 8"
-    """
     a_digits = [int(d) for d in str(a)]
     b_digits = [int(d) for d in str(b)]
 
@@ -91,9 +76,6 @@ def save_txt(samples, path):
 def main():
     os.makedirs('data/addition_scratchpad', exist_ok=True)
 
-    # Train on ALL 1-digit and 2-digit pairs so the model sees variable-length
-    # scratchpad traces (1 step and 2 steps). This forces it to learn
-    # "keep going until digits run out" rather than "always do N steps".
     print("Generating 1 and 2 digit training set (1-99)...")
     all_pairs = [(a, b) for a in range(1, 100) for b in range(1, 100)]
     random.shuffle(all_pairs)
