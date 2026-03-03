@@ -1,0 +1,20 @@
+Traceback (most recent call last):
+  File "/Users/sonnguyen/comp560-nanoGPT/train.py", line 265, in <module>
+    losses = estimate_loss()
+             ^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/lib/python3.11/site-packages/torch/utils/_contextlib.py", line 115, in decorate_context
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/sonnguyen/comp560-nanoGPT/train.py", line 225, in estimate_loss
+    logits, loss = model(X, Y)
+                   ^^^^^^^^^^^
+  File "/opt/anaconda3/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1532, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1541, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/sonnguyen/comp560-nanoGPT/model.py", line 173, in forward
+    assert t <= self.config.block_size, f"Cannot forward sequence of length {t}, block size is only {self.config.block_size}"
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Cannot forward sequence of length 1024, block size is only 32

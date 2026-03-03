@@ -1,0 +1,28 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Train reverse model",
+			"type": "shell",
+			"command": "cd /Users/sonnguyen/comp560-sonnguyen/transformer-algebra && NANOGPT_CONFIG=/Users/sonnguyen/comp560-nanoGPT/configurator.py python /Users/sonnguyen/comp560-nanoGPT/train.py config/train_reverse.py",
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "Train reverse model",
+			"type": "shell",
+			"command": "cd /Users/sonnguyen/comp560-sonnguyen/transformer-algebra && NANOGPT_CONFIG=/Users/sonnguyen/comp560-nanoGPT/configurator.py python /Users/sonnguyen/comp560-nanoGPT/train.py config/train_reverse.py",
+			"isBackground": true,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Train reverse model",
+			"type": "shell",
+			"command": "cd /Users/sonnguyen/comp560-sonnguyen/transformer-algebra && NANOGPT_CONFIG=/Users/sonnguyen/comp560-nanoGPT/configurator.py python /Users/sonnguyen/comp560-nanoGPT/train.py config/train_reverse.py",
+			"isBackground": true,
+			"problemMatcher": [],
+			"group": "build"
+		}
+	]
+}

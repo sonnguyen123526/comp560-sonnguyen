@@ -1,0 +1,38 @@
+{
+  "os": "macOS-26.3-arm64-arm-64bit",
+  "python": "CPython 3.11.7",
+  "startedAt": "2026-02-25T04:46:53.956369Z",
+  "args": [
+    "/Users/sonnguyen/comp560-sonnguyen/transformer-algebra/config/train_addition_ft.py"
+  ],
+  "program": "/Users/sonnguyen/comp560-nanoGPT/train.py",
+  "git": {
+    "remote": "https://github.com/sonnguyen123526/comp560-sonnguyen.git",
+    "commit": "1cd04d2395ccc3aacb38718bd9ab7dac87e44d3b"
+  },
+  "email": "nguyenso@dickinson.edu",
+  "root": "/Users/sonnguyen/comp560-sonnguyen/transformer-algebra",
+  "host": "Sons-MacBook-Pro-448.local",
+  "executable": "/opt/anaconda3/bin/python",
+  "cpu_count": 8,
+  "cpu_count_logical": 8,
+  "disk": {
+    "/": {
+      "total": "494384795648",
+      "used": "315277877248"
+    }
+  },
+  "memory": {
+    "total": "8589934592"
+  },
+  "apple": {
+    "name": "Apple M2",
+    "ecpuCores": 4,
+    "pcpuCores": 4,
+    "gpuCores": 10,
+    "memoryGb": 8,
+    "swapTotalBytes": "7516192768",
+    "ramTotalBytes": "8589934592"
+  },
+  "writerId": "qdldkmp6u5e9f8krl9jmgljz96f7ixoi"
+}
