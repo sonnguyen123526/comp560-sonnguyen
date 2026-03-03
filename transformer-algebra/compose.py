@@ -30,7 +30,7 @@ def load_model(checkpoint_path):
     return model
 
 def load_meta(dataset_name):
-    meta_path = f'../data/{dataset_name}/meta.pkl'
+    meta_path = f'data/{dataset_name}/meta.pkl'
     with open(meta_path, 'rb') as f:
         meta = pickle.load(f)
     return meta
@@ -197,8 +197,8 @@ def create_composition(model_A, model_B, strategy='pipeline', **kwargs):
 
 if __name__ == '__main__':
     model_paths = {
-        'reverse': '../out/reverse/ckpt.pt',
-        'addition': '../out/addition/ckpt.pt',
+        'reverse': 'out/reverse/ckpt.pt',
+        'addition': 'out/addition/ckpt.pt',
     }
     
     for name, path in model_paths.items():
