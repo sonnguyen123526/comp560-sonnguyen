@@ -33,14 +33,6 @@ def load_model(device):
 
 
 def extract_result(prompt, generated):
-    """Pull the answer after the SECOND '->' in the full sequence.
-
-    Format: "A + B -> <scratchpad> -> <result>\n..."
-    The prompt already contains the first '->'.
-    The model generates '<scratchpad> -> <result>\n...'.
-    So we look for the first '->' inside the generated text only.
-    """
-    # take only the first line of generated output
     first_line = generated.split('\n')[0]
     if '->' not in first_line:
         return ''
@@ -98,7 +90,7 @@ def main():
     # scratchpad output can be long: 2 steps per digit + result
     max_new = 80
 
-    print(f"Evaluating {len(lines):,} OOD samples (3-digit, trained on 2-digit)...")
+    print(f"Evaluating {len(lines):,} OOD samples (3-digit, trained on 1-2 digit)...")
     generated = greedy_batch(model, all_ids, max_new, args.device)
 
     correct = 0
@@ -114,7 +106,7 @@ def main():
     print(f"\n{'='*55}")
     print(f"  Addition scratchpad — OOD test accuracy")
     print(f"{'='*55}")
-    print(f"  Trained on : 2-digit numbers (10–99)")
+    print(f"  Trained on : 1-2 digit numbers (1–99)")
     print(f"  Tested on  : 3-digit numbers (100–999)")
     print(f"  Samples    : {total:,}")
     print(f"  Correct    : {correct:,}")
