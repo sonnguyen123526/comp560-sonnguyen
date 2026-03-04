@@ -186,16 +186,23 @@ Performance drop: 19%
 ```
 The addition model can't properly interpret the reversal model's output. They don't share the same internal representations (representation mismatch).
 
-**Layer Concatenation** (implementation ready)
-- Status: Code complete in `compose.py`
-- Architecture: First 2 layers from reversal + last 2 from addition
-- Parameters: ~797K total
-- Next step: Fine-tune on composed task
+**Layer Concatenation** (fine-tuned, 30 epochs)
+```
+Accuracy: 5%
+Training: 30 epochs on 10K samples
+Parameters: ~797K total
+Val loss: 0.71 → 0.34
+```
+Surprisingly poor performance. The model generates plausible-looking outputs (e.g., "800" instead of "869") but with wrong digits. Fine-tuning couldn't overcome the fundamental representation mismatch between the two independently trained models. The layers don't "speak the same language" internally.
 
-**Adapter Network** (implementation ready)
-- Status: Architecture complete, both base models frozen
-- Parameters: Only ~16K trainable (2% of full model)
-- Next step: Train adapter on composed task
+**Adapter Network** (trained, 100 epochs)
+```
+Accuracy: 0%
+Training: 100 epochs on 10K samples
+Parameters: Only ~16K trainable (2% of full model)
+Val loss: 0.83 → 0.52
+```
+Complete failure. The adapter learned to echo back modified input ("4 5 7 + 3") rather than bridge the representations. Despite low training loss, it failed to learn the actual composition. The adapter acts as a pattern matcher rather than a semantic bridge.
 
 **Task Arithmetic** (tested, not viable)
 ```
@@ -205,9 +212,11 @@ Failed because models were trained from scratch, not fine-tuned from a shared ba
 
 ### Key Findings
 1. **Individual models work perfectly** - 100% accuracy on both tasks
-2. **Composition has a 19% gap** - zero-shot pipeline loses accuracy due to representation mismatch
-3. **Task arithmetic requires shared initialization** - doesn't apply to scratch-trained models
-4. **Alternative approaches ready** - layer concat and adapter need training/fine-tuning
+2. **Zero-shot composition has a 19% gap** - pipeline loses accuracy due to representation mismatch
+3. **Layer concatenation fails dramatically** - only 5% accuracy even after fine-tuning. The models' internal representations are incompatible
+4. **Adapter network fails completely** - 0% accuracy. Learned to echo input instead of bridging representations
+5. **Task arithmetic requires shared initialization** - doesn't work for scratch-trained models
+6. **Composition is fundamentally hard** - all tested approaches failed. Models trained independently develop incompatible internal representations
 
 ### Next Experiments
 - Fine-tune layer concatenation model and measure sample efficiency vs end-to-end
