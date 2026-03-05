@@ -1,59 +1,62 @@
-# COMP 560 - Liberating Chain-of-thought Reasoning in Large Language Models
+# COMP 560 - Experiments with Small Transformers
 
-Experiments with small GPT models on character-level tasks and arithmetic reasoning, using Andrej Karpathy's [nanoGPT](https://github.com/karpathy/nanoGPT).
+Can small GPT models learn to reason step-by-step? Can we combine them like LEGO blocks? This repo explores arithmetic reasoning, model composition, and chain-of-thought learning using [nanoGPT](https://github.com/karpathy/nanoGPT).
 
 ## Projects
 
-### 1. Arithmetic with Scratchpad ([arithmetic-scratchpad/](arithmetic-scratchpad/))
+### 1. Transformer Algebra ([transformer-algebra/](transformer-algebra/))
 
-Testing if transformers learn better when shown intermediate reasoning steps during addition.
+What if we could train models on simple tasks separately and mix them like LEGO blocks? I trained one model to reverse digits (123 → 321) and another to add numbers (100+200 → 300). The question: can I compose them to do reverse-then-add (123+456 → 321+654 → 975) without ever training on the combined task?
 
-**The idea:** Compare a baseline model (direct `123+456->579`) vs. a scratchpad model that shows step-by-step work (`123+456->3+6=9,2+5=7,1+4=5->579`).
+**Tested three approaches:**
+- **Zero-shot Pipeline:** Just chain the models → 81% accuracy
+- **Layer Concatenation:** Merge layers and fine-tune → 5% accuracy (surprisingly bad!)
+- **Adapter Network:** Small translator between models → 0% accuracy
 
-- Train on 2-3 digit addition with 50k samples
-- Both models use identical architecture (4 layers, 4 heads, 128d)
-- Based on "How Far Can Transformers Reason?" (Anil et al., 2024)
+**The verdict:** Individual models nail their tasks (100%), but composition is hard. Models trained separately don't speak the same internal language. Zero-shot works best because it just uses text output directly.
 
-See [arithmetic-scratchpad/README.md](arithmetic-scratchpad/README.md) for details.
+See [transformer-algebra/README.md](transformer-algebra/README.md) for implementation details.
 
-### 2. Arithmetic Length Generalization ([arithmetic-length-generalization/](arithmetic-length-generalization/))
+### 2. Arithmetic with Scratchpad ([arithmetic-scratchpad/](arithmetic-scratchpad/))
 
-Testing if transformers can generalize from short to long numbers using complex scratchpad formats from the paper.
+Do transformers learn better when you show them the work? Testing baseline (`123+456→579`) vs. scratchpad (`123+456→3+6=9,2+5=7,1+4=5→579`) on 50k addition problems. Both models use the same 4-layer architecture.
 
-**Two methods:**
-- **Random spaces:** Embeds numbers with underscores and position pointers
-- **Cyclic shifts:** Uses cyclic rotation with explicit state tracking
+Based on "How Far Can Transformers Reason?" (Anil et al., 2024).
 
-Challenge: Train on 2-3 digits, test on 10+ digits. The paper shows these formats enable length generalization.
+### 3. Arithmetic Length Generalization ([arithmetic-length-generalization/](arithmetic-length-generalization/))
 
-See [arithmetic-length-generalization/README.md](arithmetic-length-generalization/README.md) for details.
+Can models trained on 2-3 digit addition generalize to 10+ digits? Testing two scratchpad formats from the paper:
+- **Random spaces:** Position pointers with underscores
+- **Cyclic shifts:** Rotation with explicit state tracking
 
-### 3. Insert Spaces ([insert-spaces/](insert-spaces/))
+The paper shows these enable length generalization. Our implementation is in progress.
 
-Early experiment training GPT to insert spaces between letters.
+### 4. Insert Spaces ([insert-spaces/](insert-spaces/))
 
-- Task: "hello" → "h e l l o"
-- Dataset: 3,000+ words (3-8 letters)
-- Model: 4-layer GPT (0.79M params)
-- Result: Model struggled (val loss: 1.17)
+Early experiment: can GPT learn to insert spaces between letters? ("hello" → "h e l l o")
 
-See [insert-spaces/README.MD](insert-spaces/README.MD) for analysis.
+Trained a 4-layer model (0.79M params) on 3,000 words. It failed—generated wrong characters entirely instead of just adding spaces (val loss: 1.17). Lesson: architecture too small, or this needs a seq2seq approach instead of pure language modeling.
 
-### 4. Vietnamese-English Translation ([translation/](translation/))
+### 5. Vietnamese-English Translation ([translation/](translation/))
 
-Training GPT to translate Vietnamese numbers (0-20) to English.
+Trained a 6-layer GPT to translate Vietnamese numbers to English ("một" → "one", "mười hai" → "twelve"). Achieved ~85-90% accuracy on 50k training pairs.
 
-- Dataset: 50,000 pairs ("một" → "one")
-- Model: 6-layer GPT (2M params)
-- Result: Successfully translates most numbers (val loss: 0.80)
-
-See [translation/README.MD](translation/README.MD) for analysis.
+**Why it worked:** Bigger model (6 layers vs 4), dropout, warmup, and clean data format.
 
 ## Repository Structure
 
 ```
 comp560-sonnguyen/
 ├── README.md                         # This file
+├── transformer-algebra/              # Model composition experiments
+│   ├── config/                       # Training configs (reverse, addition, composed)
+│   ├── data/                         # Dataset generation + tokenization
+│   ├── compose.py                    # Composition implementations
+│   ├── task_vectors.py              # Task vector operations
+│   ├── task_arithmetic.py           # Task arithmetic methods
+│   ├── evaluate_*.py                # Evaluation scripts
+│   ├── out/                         # Model checkpoints
+│   └── wandb/                       # Training logs
 ├── arithmetic-scratchpad/            # Scratchpad reasoning experiment
 │   ├── config/                       # Training configs (with/without scratchpad)
 │   ├── data/                         # Dataset generation + tokenization
@@ -77,85 +80,74 @@ comp560-sonnguyen/
 
 ## Quick Start
 
-### Arithmetic Experiments
-
+All training uses the same pattern. Set your nanoGPT path once:
 ```bash
-# Generate and tokenize data (combined script)
-cd arithmetic-scratchpad/data
-python prepare_tokenized.py
-cd ../..
-
-# Train baseline (no scratchpad)
-cd arithmetic-scratchpad
-NANOGPT_CONFIG=../../comp560-nanoGPT/configurator.py \
-  python -u ../../comp560-nanoGPT/train.py config/without_scratchpad.py
-
-# Train with scratchpad
-NANOGPT_CONFIG=../../comp560-nanoGPT/configurator.py \
-  python -u ../../comp560-nanoGPT/train.py config/with_scratchpad.py
+export NANOGPT_CONFIG=../../comp560-nanoGPT/configurator.py
 ```
 
-### Length Generalization
+### Train Composition Models
 
 ```bash
-# Generate datasets
-cd arithmetic-length-generalization/data
-python generate_random_space.py      # Random spaces method
-python generate_using_shifts.py      # Cyclic shifts method
-python prepare_tokenized.py          # Tokenize both
-cd ../..
+cd transformer-algebra/data && python prepare_tokenized.py && cd ..
 
-# Train models
-cd arithmetic-length-generalization
-NANOGPT_CONFIG=../../comp560-nanoGPT/configurator.py \
-  python -u ../../comp560-nanoGPT/train.py config/random_spaces.py
+# Train individual models
+python ../../comp560-nanoGPT/train.py config/train_reverse.py
+python ../../comp560-nanoGPT/train.py config/train_addition.py
+
+# Evaluate all strategies
+python evaluate_all.py --n 1000
 ```
 
-### Sample from trained model
+### Train Scratchpad Models
 
 ```bash
-NANOGPT_CONFIG=../../comp560-nanoGPT/configurator.py \
-  python -u ../../comp560-nanoGPT/sample.py config/with_scratchpad.py \
-  --num_samples=10 --max_new_tokens=200
+cd arithmetic-scratchpad/data && python prepare_tokenized.py && cd ..
+
+# Compare with/without scratchpad
+python -u ../../comp560-nanoGPT/train.py config/without_scratchpad.py
+python -u ../../comp560-nanoGPT/train.py config/with_scratchpad.py
 ```
 
-## Key Findings
+### Sample from any model
 
-**Architecture matters:**
-- Larger models (6 layers, 192d) outperform smaller ones (4 layers, 128d)
-- Dropout (0.1) and warmup help stabilization
+```bash
+python -u ../../comp560-nanoGPT/sample.py config/YOUR_CONFIG.py --num_samples=10
+```
 
-**Data format matters:**
-- Simple formats work better than verbose ones
-- Scratchpad shows promise for multi-step reasoning
-- Position-invariant encoding helps length generalization
+## Results
 
-**Evaluation is crucial:**
-- Low loss doesn't guarantee task success
-- Must check actual outputs for correctness
+### Transformer Algebra: The Composition Challenge
+
+Individual models are perfect (100% accuracy on their tasks), but combining them is surprisingly hard:
+
+| Strategy | Training Required | Accuracy |
+|----------|-------------------|----------|
+| Zero-shot Pipeline | None | 81% |
+| Layer Concatenation | 30 epochs | 5% |
+| Adapter Network | 100 epochs | 0% |
+
+The problem is **representation mismatch**—models trained independently don't share compatible internal representations. Zero-shot wins simply by treating the first model's output as regular text.
+
+### Other Results
+
+- **Translation:** ~85-90% accuracy on Vietnamese → English numbers. The 6-layer model learns diacritics naturally.
+- **Insert Spaces:** Complete failure. Model outputs wrong characters instead of just spacing them.
+
+## Lessons Learned
+
+**Size matters, but smartly.** The 32MB translation model succeeds while the 9.6MB spacing model fails. But it's not just size—architecture type (seq2seq vs language modeling) and training setup (dropout, warmup) matter just as much.
+
+**Data format is crucial.** Clean formats (`input → output`) beat verbose ones (`Input: X Output: Y`). Spacing digits (`1 2 3` vs `123`) makes patterns clearer. Scratchpads help with multi-step reasoning, but only when designed well.
+
+**Composition is genuinely hard.** You can't just snap together independently trained models. They live in different representation spaces. This is a fundamental challenge, not a tuning problem.
+
+**Trust outputs, not just loss.** The insert-spaces model hit loss 1.17 but still failed the task completely. Always check actual predictions.
 
 ## Requirements
 
-- Python 3.8+
-- PyTorch
-- NumPy
-- [nanoGPT](https://github.com/karpathy/nanoGPT)
-
-Set `NANOGPT_CONFIG` environment variable to point to nanoGPT's configurator.
-
-## Reference
-
-```bibtex
-@article{anil2024transformers,
-  title={How Far Can Transformers Reason? The Globality Barrier and Inductive Scratchpad},
-  author={Anil, Cem and Wu, Yuhuai and Andreassen, Anders and Lewkowycz, Aitor and 
-          Misra, Vedant and Ramasesh, Vinay and Slone, Ambrose and Gur-Ari, Guy and 
-          Dyer, Ethan and Neyshabur, Behnam},
-  journal={arXiv preprint arXiv:2406.06467},
-  year={2024}
-}
-```
+- Python 3.8+, PyTorch, NumPy
+- [nanoGPT](https://github.com/karpathy/nanoGPT) (set `NANOGPT_CONFIG` to point to configurator.py)
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) for details
+MIT
