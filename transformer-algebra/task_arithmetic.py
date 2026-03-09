@@ -1,7 +1,6 @@
 import argparse
 import os
 import pickle
-import random
 import sys
 
 import torch
@@ -9,11 +8,20 @@ import torch
 sys.path.insert(0, '/Users/sonnguyen/comp560-nanoGPT')
 from model import GPT, GPTConfig
 
-SEED = 42
+SEED = 42  # kept for backwards-compat imports; not used for evaluation
 
 BASE_CKPT        = 'out/base/ckpt.pt'
 REVERSE_FT_CKPT  = 'out/reverse_ft/ckpt.pt'
 ADDITION_FT_CKPT = 'out/addition_ft/ckpt.pt'
+
+# Prefer unified mixed-vocab meta.pkl so all models share the same tokenizer.
+# Falls back to per-task meta.pkl for backwards compatibility.
+def _best_meta(primary, fallback):
+    return primary if os.path.exists(primary) else fallback
+
+MIXED_META_PATH   = 'data/mixed/meta.pkl'
+REVERSE_META_PATH = _best_meta(MIXED_META_PATH, 'data/reverse_ft/meta.pkl')
+ADDITION_META_PATH = _best_meta(MIXED_META_PATH, 'data/addition/meta.pkl')
 
 
 def load_params(path):
@@ -57,34 +65,48 @@ def greedy(model, prompt_ids, max_new, device):
     return x[0, len(prompt_ids):].tolist()
 
 
+REVERSE_TEST_FILE  = 'data/test/reverse_test.txt'
+ADDITION_TEST_FILE = 'data/test/addition_test.txt'
+
+
+def load_test_examples(path, n):
+    """Load up to n lines from a held-out test file."""
+    with open(path) as f:
+        lines = [l.strip() for l in f if l.strip()]
+    return lines[:n]
+
+
 def evaluate_reverse(model, meta, n, device):
-    random.seed(SEED)
+    """Evaluate on held-out reverse test set (data/test/reverse_test.txt)."""
     stoi, itos = meta['stoi'], meta['itos']
+    examples = load_test_examples(REVERSE_TEST_FILE, n)
     correct = 0
-    for _ in range(n):
-        digits = [random.randint(0, 9) for _ in range(random.randint(2, 4))]
-        inp    = ' '.join(str(d) for d in digits)
-        exp    = ' '.join(str(d) for d in reversed(digits))
-        prompt = inp + ' ->'
+    for ex in examples:
+        # format: "1 2 3 -> 3 2 1"
+        parts  = ex.split(' -> ')
+        prompt = parts[0] + ' ->'
+        exp    = parts[1].strip()
+        digits = prompt.replace(' ->', '').split()
         try:
             ids = [stoi[c] for c in prompt]
         except KeyError:
             continue
-        out  = greedy(model, ids, len(digits) * 2 + 4, device)
-        got  = ''.join(itos[i] for i in out).split('\n')[0].strip()
+        out = greedy(model, ids, len(digits) * 2 + 4, device)
+        got = ''.join(itos[i] for i in out).split('\n')[0].strip()
         if ' '.join(got.split()[:len(digits)]) == exp:
             correct += 1
-    return correct / n
+    return correct / len(examples)
 
 
 def evaluate_addition(model, meta, n, device):
-    random.seed(SEED + 1)
+    """Evaluate on held-out addition test set (data/test/addition_test.txt)."""
     stoi, itos = meta['stoi'], meta['itos']
+    examples = load_test_examples(ADDITION_TEST_FILE, n)
     correct = 0
-    for _ in range(n):
-        a, b   = random.randint(100, 999), random.randint(100, 999)
-        exp    = str(a + b)
-        prompt = ' '.join(str(a)) + ' + ' + ' '.join(str(b)) + ' ->'
+    for ex in examples:
+        # format: "1 2 3 + 4 5 6 -> 7 8 9"
+        prompt = ex.rsplit(' -> ', 1)[0] + ' ->'
+        exp    = ''.join(ex.rsplit(' -> ', 1)[1].strip().split())
         try:
             ids = [stoi[c] for c in prompt]
         except KeyError:
@@ -93,12 +115,12 @@ def evaluate_addition(model, meta, n, device):
         got = ''.join(''.join(itos[i] for i in out).split('\n')[0].strip().split())
         if got == exp:
             correct += 1
-    return correct / n
+    return correct / len(examples)
 
 
 def run_single(lam_rev, lam_add, device, n):
-    rev_meta = load_meta('data/reverse_ft/meta.pkl')
-    add_meta = load_meta('data/addition/meta.pkl')
+    rev_meta = load_meta(REVERSE_META_PATH)
+    add_meta = load_meta(ADDITION_META_PATH)
 
     model   = build_merged_model(lam_rev, lam_add).to(device)
     rev_acc = evaluate_reverse(model,  rev_meta, n, device)
@@ -110,8 +132,8 @@ def run_single(lam_rev, lam_add, device, n):
 
 
 def run_sweep(device, n):
-    rev_meta = load_meta('data/reverse_ft/meta.pkl')
-    add_meta = load_meta('data/addition/meta.pkl')
+    rev_meta = load_meta(REVERSE_META_PATH)
+    add_meta = load_meta(ADDITION_META_PATH)
 
     lambdas = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
 
