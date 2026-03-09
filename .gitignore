@@ -1,0 +1,18 @@
+# Model checkpoints
+out/
+**/out/
+
+# Generated binary datasets (reproducible via prepare_*.py scripts)
+data/*/train.bin
+data/*/val.bin
+data/*/*.pkl
+
+# Wandb training logs
+wandb/
+**/wandb/
+
+# Python
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
