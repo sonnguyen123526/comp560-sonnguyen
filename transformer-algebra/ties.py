@@ -33,7 +33,7 @@ def load_params(path):
 
 
 def trim(tau, density):
-    # For each parameter tensor, zero out the bottom (1-density) fraction by magnitude
+    # Legacy trim: per-tensor thresholding by magnitude.
     trimmed = {}
     for k, t in tau.items():
         if density >= 1.0:
@@ -47,16 +47,72 @@ def trim(tau, density):
     return trimmed
 
 
+def trim_global(tau, density):
+    """Canonical-style trim: one global magnitude threshold across all params."""
+    if density >= 1.0:
+        return {k: v.clone() for k, v in tau.items()}
+
+    all_abs = torch.cat([torch.abs(v).flatten() for v in tau.values()])
+    threshold = torch.quantile(all_abs, 1.0 - density)
+
+    trimmed = {}
+    for k, t in tau.items():
+        mask = torch.abs(t) >= threshold
+        out = t.clone()
+        out[~mask] = 0.0
+        trimmed[k] = out
+    return trimmed
+
+
 def elect_sign(tau_rev, tau_add):
-    # Compute majority sign: sign(tau_rev + tau_add)
+    # Legacy sign election: sign(tau_rev + tau_add)
     elected = {}
     for k in tau_rev:
         elected[k] = torch.sign(tau_rev[k] + tau_add[k])
     return elected
 
 
+def elect_sign_strict(tau_rev, tau_add):
+    """Stricter 2-task sign election with explicit tie handling.
+
+    Rules per coordinate:
+      1) If both signs agree (non-zero), keep that sign.
+      2) If one update is zero, use the non-zero sign.
+      3) If signs conflict, choose sign of larger magnitude.
+      4) If conflicting magnitudes are equal, elect 0.
+    """
+    elected = {}
+    for k in tau_rev:
+        tr = tau_rev[k]
+        ta = tau_add[k]
+        sr = torch.sign(tr)
+        sa = torch.sign(ta)
+
+        same_nonzero = (sr == sa) & (sr != 0)
+        rev_only = (sr != 0) & (sa == 0)
+        add_only = (sa != 0) & (sr == 0)
+        conflict = (sr != 0) & (sa != 0) & (sr != sa)
+
+        out = torch.zeros_like(tr)
+        out[same_nonzero] = sr[same_nonzero]
+        out[rev_only] = sr[rev_only]
+        out[add_only] = sa[add_only]
+
+        if conflict.any():
+            abs_tr = torch.abs(tr)
+            abs_ta = torch.abs(ta)
+            rev_bigger = conflict & (abs_tr > abs_ta)
+            add_bigger = conflict & (abs_ta > abs_tr)
+            out[rev_bigger] = sr[rev_bigger]
+            out[add_bigger] = sa[add_bigger]
+            # Equal-magnitude conflict stays zero by design.
+
+        elected[k] = out
+    return elected
+
+
 def disjoint_merge(tau_rev, tau_add, elected):
-    # For each parameter, average the task vectors whose sign matches the elected sign
+    # Legacy disjoint merge.
     merged = {}
     for k in tau_rev:
         tr = tau_rev[k]
@@ -80,7 +136,36 @@ def disjoint_merge(tau_rev, tau_add, elected):
     return merged
 
 
-def build_ties_model(density, lam):
+def disjoint_merge_strict(tau_rev, tau_add, elected):
+    """Zero-safe disjoint merge.
+
+    Only coordinates with non-zero elected sign can receive updates.
+    Each task contributes only when its sign matches elected sign.
+    """
+    merged = {}
+    for k in tau_rev:
+        tr = tau_rev[k]
+        ta = tau_add[k]
+        e = elected[k]
+
+        valid = e != 0
+        mask_rev = valid & (torch.sign(tr) == e)
+        mask_add = valid & (torch.sign(ta) == e)
+
+        avg = torch.zeros_like(tr)
+        count = torch.zeros_like(tr).float()
+
+        avg[mask_rev] += tr[mask_rev]
+        count[mask_rev] += 1.0
+        avg[mask_add] += ta[mask_add]
+        count[mask_add] += 1.0
+
+        merged[k] = torch.where(count > 0, avg / count, torch.zeros_like(avg))
+
+    return merged
+
+
+def build_ties_model(density, lam, mode='canonical'):
     base_ckpt, theta_base = load_params(BASE_CKPT)
     _,          theta_rev  = load_params(REVERSE_FT_CKPT)
     _,          theta_add  = load_params(ADDITION_FT_CKPT)
@@ -88,12 +173,16 @@ def build_ties_model(density, lam):
     tau_rev = {k: theta_rev[k] - theta_base[k] for k in theta_base}
     tau_add = {k: theta_add[k] - theta_base[k] for k in theta_base}
 
-    tau_rev_trimmed = trim(tau_rev, density)
-    tau_add_trimmed = trim(tau_add, density)
-
-    elected = elect_sign(tau_rev_trimmed, tau_add_trimmed)
-
-    tau_ties = disjoint_merge(tau_rev_trimmed, tau_add_trimmed, elected)
+    if mode == 'legacy':
+        tau_rev_trimmed = trim(tau_rev, density)
+        tau_add_trimmed = trim(tau_add, density)
+        elected = elect_sign(tau_rev_trimmed, tau_add_trimmed)
+        tau_ties = disjoint_merge(tau_rev_trimmed, tau_add_trimmed, elected)
+    else:
+        tau_rev_trimmed = trim_global(tau_rev, density)
+        tau_add_trimmed = trim_global(tau_add, density)
+        elected = elect_sign_strict(tau_rev_trimmed, tau_add_trimmed)
+        tau_ties = disjoint_merge_strict(tau_rev_trimmed, tau_add_trimmed, elected)
 
     merged = {k: theta_base[k] + lam * tau_ties[k] for k in theta_base}
 
@@ -355,7 +444,7 @@ def analyze_composite_failures(
     return counts, samples
 
 
-def run_composite_benchmark(device, n, composite_file, density, lam, csv_path=None):
+def run_composite_benchmark(device, n, composite_file, density, lam, csv_path=None, ties_mode='canonical'):
     meta = load_meta(MIXED_META_PATH)
 
     models = [
@@ -365,7 +454,7 @@ def run_composite_benchmark(device, n, composite_file, density, lam, csv_path=No
         ('naive(l=1.0)', build_naive_model(1.0, 1.0)),
         ('naive(l=0.2)', build_naive_model(0.2, 0.2)),
         ('naive(l=0.4)', build_naive_model(0.4, 0.4)),
-        (f'ties(d={density:.1f},l={lam:.1f})', build_ties_model(density, lam)),
+        (f'ties({ties_mode},d={density:.1f},l={lam:.1f})', build_ties_model(density, lam, mode=ties_mode)),
     ]
 
     print()
@@ -401,6 +490,7 @@ def run_composite_multiseed(
     num_seeds,
     composite_file,
     csv_path=None,
+    ties_mode='canonical',
 ):
     """Run composite benchmark over multiple seeds and report mean/std per model."""
     model_builders = [
@@ -410,7 +500,7 @@ def run_composite_multiseed(
         ('naive(l=1.0)', lambda: build_naive_model(1.0, 1.0)),
         ('naive(l=0.2)', lambda: build_naive_model(0.2, 0.2)),
         ('naive(l=0.4)', lambda: build_naive_model(0.4, 0.4)),
-        (f'ties(d={density:.1f},l={lam:.1f})', lambda: build_ties_model(density, lam)),
+        (f'ties({ties_mode},d={density:.1f},l={lam:.1f})', lambda: build_ties_model(density, lam, mode=ties_mode)),
     ]
 
     seeds = [seed_start + i for i in range(num_seeds)]
@@ -505,11 +595,11 @@ def run_sweep(device, n):
     print()
 
 
-def run_single(density, lam, device, n):
+def run_single(density, lam, device, n, ties_mode='canonical'):
     rev_meta = load_meta(REVERSE_META_PATH)
     add_meta = load_meta(ADDITION_META_PATH)
 
-    model = build_ties_model(density, lam).to(device)
+    model = build_ties_model(density, lam, mode=ties_mode).to(device)
     rev_acc = evaluate_reverse(model, rev_meta, n, device)
     add_acc = evaluate_addition(model, add_meta, n, device)
 
@@ -517,7 +607,7 @@ def run_single(density, lam, device, n):
     print('=' * 40)
     print('TIES Single Run')
     print('=' * 40)
-    print(f'density={density:.2f} lam={lam:.2f}')
+    print(f'mode={ties_mode} density={density:.2f} lam={lam:.2f}')
     print(f'rev: {rev_acc*100:.1f}%')
     print(f'add: {add_acc*100:.1f}%')
     print()
@@ -541,6 +631,7 @@ def main():
     parser.add_argument('--seed', type=int, default=42)
     parser.add_argument('--n',       type=int,   default=200)
     parser.add_argument('--device',  type=str,   default='mps')
+    parser.add_argument('--ties_mode', type=str, default='canonical', choices=['canonical', 'legacy'])
     args = parser.parse_args()
 
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
@@ -558,13 +649,14 @@ def main():
             args.num_seeds,
             args.composite_file,
             csv_path=args.composite_csv,
+            ties_mode=args.ties_mode,
         )
     elif args.composite_failure_analysis:
         if not os.path.exists(args.composite_file):
             print(f'Composite file not found at {args.composite_file}; generating it now.')
             generate_composite_test(args.composite_file, args.n, args.seed)
         meta = load_meta(MIXED_META_PATH)
-        model = build_ties_model(args.density, args.lam).to(args.device)
+        model = build_ties_model(args.density, args.lam, mode=args.ties_mode).to(args.device)
         counts, samples = analyze_composite_failures(
             model,
             meta,
@@ -593,11 +685,12 @@ def main():
             args.density,
             args.lam,
             csv_path=args.composite_csv,
+            ties_mode=args.ties_mode,
         )
     elif args.sweep:
         run_sweep(args.device, args.n)
     else:
-        run_single(args.density, args.lam, args.device, args.n)
+        run_single(args.density, args.lam, args.device, args.n, ties_mode=args.ties_mode)
 
 
 if __name__ == '__main__':
