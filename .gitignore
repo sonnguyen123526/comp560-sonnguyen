@@ -11,6 +11,11 @@ data/*/*.pkl
 wandb/
 **/wandb/
 
+# Transformer-algebra generated results
+transformer-algebra/*.csv
+transformer-algebra/*.txt
+transformer-algebra/ties_results_table.md
+
 # Python
 __pycache__/
 **/__pycache__/
