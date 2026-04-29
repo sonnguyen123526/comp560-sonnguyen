@@ -214,12 +214,12 @@ python composition_strategies/evaluate_all.py --n 200 --device mps
 
 ## Results Summary
 
-The main empirical pattern is consistent across the scripts and result files in this folder:
+The checked-in result files point to a consistent pattern:
 
-- TIES and DARE can preserve strong performance on the individual source tasks.
-- Task arithmetic and other weight-space baselines provide useful diagnostics, but do not make composition easy.
-- The composed reverse-then-add benchmark remains the difficult case.
-- The scratch composition strategies are useful to compare, but they do not remove the core composition gap.
+- TIES preserves the source tasks well. In [ties_results_table.md](ties_results_table.md), the strongest runs reach 93-94% reverse accuracy and up to 100% addition accuracy, while the naive merge is 0% on both tasks.
+- DARE is similarly strong on the source tasks. In [dare_results_table_no_rescale.csv](dare_results_table_no_rescale.csv), the best run reaches 95.0% reverse and 99.5% addition at `drop_rate=0.8`, `lam=0.2`.
+- Composition remains the hard part. In [composite_benchmark_d08_l02.csv](composite_benchmark_d08_l02.csv), composite accuracy is 0-1% across the base, naive, and TIES variants.
+- The stratified benchmark shows the same pattern. In [stratified_composition_results.csv](stratified_composition_results.csv), the level-2 and level-3 accuracies are 0.0% for the main models, and the overall scores stay low.
 
 Artifacts such as `ties_results_table.md`, `dare_results_table.csv`, `composite_benchmark_*.csv`, and `stratified_composition_results*.csv` are generated outputs. They are useful for analysis, but they are not required source files.
 
