@@ -6,14 +6,13 @@ Can small GPT models learn to reason step-by-step? Can we combine them like LEGO
 
 ### 1. Transformer Algebra ([transformer-algebra/](transformer-algebra/))
 
-What if we could train models on simple tasks separately and mix them like LEGO blocks? I trained one model to reverse digits (123 → 321) and another to add numbers (100+200 → 300). The question: can I compose them to do reverse-then-add (123+456 → 321+654 → 975) without ever training on the combined task?
+What if we could train models on simple tasks separately and mix them like LEGO blocks? The goal is to compose reverse and addition models to solve reverse-then-add without training end-to-end.
 
-**Tested three approaches:**
-- **Zero-shot Pipeline:** Just chain the models → 81% accuracy
-- **Layer Concatenation:** Merge layers and fine-tune → 5% accuracy (surprisingly bad!)
-- **Adapter Network:** Small translator between models → 0% accuracy
+This folder now has two tracks:
+- Task-vector/model-merging experiments (TIES/DARE + baselines) with a shared base and unified vocabulary.
+- Composition strategies (pipeline, layer concatenation, adapter) trained from scratch.
 
-**The verdict:** Individual models nail their tasks (100%), but composition is hard. Models trained separately don't speak the same internal language. Zero-shot works best because it just uses text output directly.
+**The verdict:** Composition remains hard. Single-task accuracy can be high, but composite accuracy stays low in the benchmark. See [transformer-algebra/README.md](transformer-algebra/README.md) for current results and artifacts.
 
 See [transformer-algebra/README.md](transformer-algebra/README.md) for implementation details.
 
@@ -49,12 +48,18 @@ Trained a 6-layer GPT to translate Vietnamese numbers to English ("một" → "o
 comp560-sonnguyen/
 ├── README.md                         # This file
 ├── transformer-algebra/              # Model composition experiments
-│   ├── config/                       # Training configs (reverse, addition, composed)
+│   ├── config/                       # Shared-base training configs (base + fine-tune)
 │   ├── data/                         # Dataset generation + tokenization
-│   ├── compose.py                    # Composition implementations
-│   ├── task_vectors.py              # Task vector operations
+│   ├── composition_strategies/       # Pipeline/concat/adapter experiments
+│   │   ├── config/                   # Scratch model configs
+│   │   ├── compose.py
+│   │   └── evaluate_*.py
+│   ├── ties.py                       # TIES merge + composite eval
+│   ├── dare.py                       # DARE merge + composite eval
 │   ├── task_arithmetic.py           # Task arithmetic methods
-│   ├── evaluate_*.py                # Evaluation scripts
+│   ├── task_vector_conflict.py      # Conflict diagnostics
+│   ├── cka.py                       # Representation similarity
+│   ├── evaluate_stratified_composition.py
 │   ├── out/                         # Model checkpoints
 │   └── wandb/                       # Training logs
 ├── arithmetic-scratchpad/            # Scratchpad reasoning experiment
@@ -70,10 +75,13 @@ comp560-sonnguyen/
 ├── insert-spaces/                    # Character spacing experiment
 │   ├── config/
 │   ├── data/
-│   └── seq2seq_model_testing/       # Alternative seq2seq approach
+│   ├── seq2seq_model_testing/       # Alternative seq2seq approach
+│   ├── out/
+│   └── wandb/
 ├── translation/                      # Vietnamese-English number translation
 │   ├── config/
-│   └── data/
+│   ├── data/
+│   └── out/
 ├── assets/                           # Plots and figures
 └── wandb/                            # Shared training logs
 ```
@@ -88,14 +96,35 @@ export NANOGPT_CONFIG=../../comp560-nanoGPT/configurator.py
 ### Train Composition Models
 
 ```bash
-cd transformer-algebra/data && python prepare_tokenized.py && cd ..
+cd transformer-algebra
+python data/prepare_tokenized.py
 
 # Train individual models
-python ../../comp560-nanoGPT/train.py config/train_reverse.py
-python ../../comp560-nanoGPT/train.py config/train_addition.py
+python ../../comp560-nanoGPT/train.py composition_strategies/config/train_reverse.py
+python ../../comp560-nanoGPT/train.py composition_strategies/config/train_addition.py
 
 # Evaluate all strategies
-python evaluate_all.py --n 1000
+python composition_strategies/evaluate_all.py --n 1000
+```
+
+### Train Shared-Base (TIES/DARE) Models
+
+```bash
+cd transformer-algebra
+python data/prepare_mixed.py
+
+python ../../comp560-nanoGPT/train.py config/train_base.py
+
+mkdir -p out/reverse_ft out/addition_ft
+cp out/base/ckpt.pt out/reverse_ft/ckpt.pt
+cp out/base/ckpt.pt out/addition_ft/ckpt.pt
+
+python ../../comp560-nanoGPT/train.py config/train_reverse_ft.py
+python ../../comp560-nanoGPT/train.py config/train_addition_ft_base.py
+
+# Example sweeps
+python ties.py --sweep --n 200 --device mps
+python dare.py --sweep --n 200 --device mps
 ```
 
 ### Train Scratchpad Models
@@ -118,15 +147,7 @@ python -u ../../comp560-nanoGPT/sample.py config/YOUR_CONFIG.py --num_samples=10
 
 ### Transformer Algebra: The Composition Challenge
 
-Individual models are perfect (100% accuracy on their tasks), but combining them is surprisingly hard:
-
-| Strategy | Training Required | Accuracy |
-|----------|-------------------|----------|
-| Zero-shot Pipeline | None | 81% |
-| Layer Concatenation | 30 epochs | 5% |
-| Adapter Network | 100 epochs | 0% |
-
-The problem is **representation mismatch**—models trained independently don't share compatible internal representations. Zero-shot wins simply by treating the first model's output as regular text.
+Task-vector merges (TIES/DARE) can preserve strong reverse/addition accuracy, but composite reverse-then-add remains near-zero in the benchmark. The scratch composition strategies (pipeline/concat/adapter) live under composition_strategies; see [transformer-algebra/README.md](transformer-algebra/README.md) for the latest numbers and result files.
 
 ### Other Results
 

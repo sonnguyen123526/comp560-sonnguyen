@@ -36,8 +36,8 @@ Standard encoder-decoder with Bahdanau attention:
 
 ### Simple Seq2Seq
 ```bash
-cd insert-spaces/seq2seq_model_testing
-python train_simple_seq2seq.py
+cd insert-spaces
+python seq2seq_model_testing/train_simple_seq2seq.py
 ```
 
 **Hyperparameters:**
@@ -50,7 +50,8 @@ python train_simple_seq2seq.py
 
 ### Attention Seq2Seq
 ```bash
-python train_seq2seq.py
+cd insert-spaces
+python seq2seq_model_testing/train_seq2seq.py
 ```
 
 **Hyperparameters:**
@@ -97,12 +98,14 @@ seq2seq_model_testing/
 ├── seq2seq_model.py              # Seq2seq with attention
 ├── train_seq2seq.py              # Training script with attention
 ├── sample_simple_seq2seq.py      # Sampling script for simple model
-├── sample_seq2seq.py             # Sampling script for attention model
+└── sample_seq2seq.py             # Sampling script for attention model
+
+insert-spaces/
 └── out/
-    ├── simple_seq2seq/           # Simple model checkpoints
-    │   └── best_model.pt
-    └── seq2seq/                  # Attention model checkpoints
-        └── best_model.pt
+  ├── simple_seq2seq/           # Simple model checkpoints
+  │   └── best_model.pt
+  └── seq2seq/                  # Attention model checkpoints
+    └── best_model.pt
 ```
 
 ## Key Features
@@ -126,7 +129,7 @@ seq2seq_model_testing/
 ## Usage Example
 
 ```python
-# Load trained model
+# Load trained model (run from insert-spaces/)
 checkpoint = torch.load('out/simple_seq2seq/best_model.pt')
 model.load_state_dict(checkpoint['model_state_dict'])
 

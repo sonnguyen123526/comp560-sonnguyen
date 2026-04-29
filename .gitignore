@@ -16,6 +16,10 @@ transformer-algebra/*.csv
 transformer-algebra/*.txt
 transformer-algebra/ties_results_table.md
 
+# Transformer-algebra generated test sets
+transformer-algebra/data/test/composite_test.txt
+transformer-algebra/data/test/stratified_composite_test.txt
+
 # Python
 __pycache__/
 **/__pycache__/

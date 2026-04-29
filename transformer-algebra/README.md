@@ -1,244 +1,252 @@
-# Transformer Algebra: Can We Mix and Match Models?
+# Transformer Algebra
 
-Here's the idea: what if we could train transformers on simple tasks separately and then compose them like LEGO blocks? Instead of training one massive model from scratch on a complex task T∘U, we'd train a small model A on T, another model B on U, and then figure out how to combine them.
+This folder explores whether small transformer models trained on simple tasks can be composed to solve a harder task. The primary example is reverse then add:
 
-**Concrete example:** I trained one tiny model to reverse digits (123 → 321) and another to add numbers (100+200 → 300). The question is: can I compose them to do reverse-then-add (123+456 → 321+654 → 975) without ever training on that combined task?
+- Reverse: "1 2 3" -> "3 2 1"
+- Addition: "1 2 3 + 4 5 6" -> "5 7 9"
+- Composed: "1 2 3 + 4 5 6" -> "3 2 1 + 6 5 4" -> "9 7 5"
 
-Basically, can transformers work like modular functions? Let's find out.
+There are two parallel tracks:
 
-## Why Bother?
+1) Task-vector and model-merging experiments (TIES, DARE, naive merge) built on a shared base model and a shared vocabulary.
+2) Composition strategies (pipeline, layer concatenation, adapter) trained from scratch on separate datasets.
 
-Training big models is slow and expensive. If we could build specialized models for simple tasks and compose them on the fly, we'd get:
-- **Sample efficiency** - learn complex tasks using way less data
-- **Modularity** - reuse the same models across different problems
-- **Interpretability** - actually understand what each piece is doing
+## What is in here
 
-The million-dollar question: can composition match training from scratch?
-
-## How to Compose Models
-
-I'm experimenting with three approaches:
-
-**1. Pipeline (Zero-shot)**  
-Literally just chain them: run model A, take its output text, feed it to model B. No training whatsoever. The catch? They probably don't "speak the same language" internally.
-
-**2. Layer Concatenation + Fine-tuning**  
-Grab the first half of model A's layers, the second half of model B's layers, bolt them together, and fine-tune a bit. This uses what both models learned but needs some training.
-
-**3. Adapter Network**  
-Freeze both models completely, train a tiny "translator" network between them. Only ~16K parameters to train instead of 800K. Might work, might be a bottleneck.
-
-## Project Structure
+High-level structure (files listed here exist in the repo):
 
 ```
 transformer-algebra/
-├── README.md
-├── config/                              # Training configs
-│   ├── train_reverse.py                 # Digit reversal task
-│   ├── train_addition.py                # Simple addition
-│   ├── train_addition_scratchpad.py     # Addition with intermediate steps
-│   ├── train_addition_ft.py             # Fine-tuning config
-│   └── train_composed.py                # End-to-end baseline
-├── data/                                # Generated datasets
-│   ├── prepare_tokenized.py             # Main dataset generator
-│   ├── prepare_addition_scratchpad.py   # Scratchpad data generator
-│   ├── generate_addition_test.py        # Test set generator
-│   ├── generate_composed_test.py        # Composed test generator
-│   ├── reverse/                         # Reversal task data (train/val)
-│   ├── addition/                        # Addition task data
-│   ├── addition_scratchpad/             # Addition with steps shown
-│   ├── composed/                        # Composed task baseline
-│   └── reverse_ft/                      # Fine-tuning data
-├── out/                                 # Trained model checkpoints
-├── compose.py                           # Composition implementations
-├── task_vectors.py                      # Task vector operations
-├── task_arithmetic.py                   # Task arithmetic methods
-├── evaluate_reverse.py                  # Reversal model evaluation
-├── evaluate_addition.py                 # Addition model evaluation
-├── evaluate_addition_scratchpad.py      # Scratchpad evaluation
-├── evaluate_composed.py                 # Composed model evaluation
-├── evaluate_all.py                      # Comprehensive evaluation (all strategies)
-└── wandb/                               # Training logs
+├── config/                         # Shared-base training configs (task-vector track)
+│   ├── train_base.py
+│   ├── train_reverse_ft.py
+│   └── train_addition_ft_base.py
+├── data/
+│   ├── prepare_mixed.py            # Shared vocab datasets + held-out tests
+│   ├── prepare_tokenized.py        # Independent reverse/addition/composed datasets
+│   ├── prepare_addition_scratchpad.py
+│   ├── generate_addition_test.py
+│   ├── generate_composed_test.py
+│   ├── mixed/ reverse_shared/ addition_shared/ test/
+│   ├── reverse/ addition/ composed/
+│   └── addition_scratchpad/
+├── composition_strategies/         # Pipeline, concat, adapter experiments
+│   ├── config/                     # nanoGPT configs for scratch models
+│   ├── compose.py
+│   ├── train_concat.py
+│   ├── train_adapter.py
+│   ├── evaluate_composed.py
+│   ├── evaluate_composition.py
+│   ├── evaluate_reverse.py
+│   ├── evaluate_addition.py
+│   └── task_vectors.py
+├── ties.py                         # TIES merge + composite eval
+├── dare.py                         # DARE merge + composite eval
+├── task_arithmetic.py              # Task arithmetic on shared-base checkpoints
+├── task_vector_conflict.py         # Cosine/sign conflict diagnostics
+├── cka.py                          # CKA representation similarity
+├── evaluate_stratified_composition.py
+├── check_duplicates.py
+└── check_test_leakage.py
 ```
 
-## Getting Started
+## Dependencies and setup
 
-### 1. Make Some Data
+- Python 3.10+ with `torch`, `numpy`, `pickle`, `argparse`.
+- nanoGPT is required. Some scripts hard-code an absolute path, while others
+  auto-discover `~/comp560-nanoGPT`.
+
+If your nanoGPT checkout is elsewhere:
+
+1) Put nanoGPT at `~/comp560-nanoGPT` (works with the auto-discovery scripts), and
+2) Update the remaining hard-coded paths to your local path.
+
+Quick fix: search for `comp560-nanoGPT` and replace it with your local path.
+On Windows, use a double-backslash in string literals, for example
+`C:\\Users\\you\\comp560-nanoGPT`.
+
+## Track A: Shared-base task vectors (TIES, DARE)
+
+This track relies on a shared base model and a single unified vocabulary across all tasks.
+
+### 1) Build the shared datasets
 
 ```bash
-cd data
-python prepare_tokenized.py
+python data/prepare_mixed.py
 ```
 
-This generates three datasets (10K examples each):
-- **reverse/** - flipping digits: `12345 → 54321`
-- **addition/** - basic math: `123+456 → 579`  
-- **composed/** - both operations: `123+456 → 321+654 → 975`
+This creates:
 
-Need more? Try `--num_samples 50000` or `--max_digits 5` for longer numbers.
+- `data/mixed/` for base training
+- `data/reverse_shared/` and `data/addition_shared/` for fine-tuning
+- `data/test/` held-out test sets for reverse and addition
 
-### 2. Train Some Models
+### 2) Train base and fine-tuned models
 
-Reversal model:
 ```bash
-NANOGPT_CONFIG=../../comp560-nanoGPT/configurator.py \
-  python ../../comp560-nanoGPT/train.py config/train_reverse.py
+NANOGPT_CONFIG=/Users/sonnguyen/comp560-nanoGPT/configurator.py \
+  python /Users/sonnguyen/comp560-nanoGPT/train.py config/train_base.py
+
+# Copy base checkpoint before fine-tuning
+mkdir -p out/reverse_ft out/addition_ft
+cp out/base/ckpt.pt out/reverse_ft/ckpt.pt
+cp out/base/ckpt.pt out/addition_ft/ckpt.pt
+
+NANOGPT_CONFIG=/Users/sonnguyen/comp560-nanoGPT/configurator.py \
+  python /Users/sonnguyen/comp560-nanoGPT/train.py config/train_reverse_ft.py
+
+NANOGPT_CONFIG=/Users/sonnguyen/comp560-nanoGPT/configurator.py \
+  python /Users/sonnguyen/comp560-nanoGPT/train.py config/train_addition_ft_base.py
 ```
 
-Addition model:
+### 3) Run task-vector experiments
+
+TIES sweep and single run:
+
 ```bash
-NANOGPT_CONFIG=../../comp560-nanoGPT/configurator.py \
-  python ../../comp560-nanoGPT/train.py config/train_addition.py
+python ties.py --sweep --n 200 --device mps
+python ties.py --density 0.6 --lam 0.4 --n 200 --device mps
 ```
 
-Both use the exact same architecture (4 layers, 4 heads, 128-dim) for a fair comparison. Takes maybe 5-10 minutes on a GPU, gets to ~90%+ accuracy pretty quickly.
+Composite benchmark and failure analysis:
 
-### 3. Train a Baseline
-
-Let's train a model end-to-end on the composed task so we have something to beat:
 ```bash
-NANOGPT_CONFIG=../../comp560-nanoGPT/configurator.py \
-  python ../../comp560-nanoGPT/train.py config/train_composed.py
+python ties.py --composite_eval --n 200 --device mps
+python ties.py --composite_failure_analysis --n 200 --device mps
 ```
 
-### 4. See How Well It Works
+DARE sweep and composite eval:
 
-Test individual models:
 ```bash
-python evaluate_reverse.py              # How good is the reversal model?
-python evaluate_addition.py             # How about addition?
-python evaluate_addition_scratchpad.py  # Scratchpad version
-python evaluate_composed.py             # Zero-shot pipeline test
+python dare.py --sweep --n 200 --device mps
+python dare.py --composite_eval --drop_rate 0.4 --lam 0.6 --n 200 --device mps
 ```
 
-Or get a full report on everything:
+Task arithmetic baselines:
+
 ```bash
-python evaluate_all.py --n 100          # Quick test (100 samples)
-python evaluate_all.py --n 1000         # More thorough
+python task_arithmetic.py --mode sweep --n 200 --device mps
+python task_arithmetic.py --mode negate --n 200 --device mps
 ```
 
-## Why Space Out the Digits?
+Diagnostics:
 
-All the datasets use spacing: `1 2 3` instead of `123`. Why?
-
-**Reversal:** `1 2 3 4 5 → 5 4 3 2 1`  
-**Addition:** `1 2 3 + 4 5 6 → 5 7 9`  
-**Composed:** `1 2 3 + 4 5 6 → 3 2 1 + 6 5 4 → 9 7 5`
-
-Spacing makes everything clearer:
-- Each digit becomes its own token - easier to learn position-by-position
-- You can literally *see* the pattern (watch the digits flip!)
-- When something breaks, you know exactly which digit went wrong
-- It's like showing your work in math class - makes the intermediate steps explicit
-
-## Model Specs
-
-All models use the same tiny architecture (~200K parameters):
-- 4 layers, 4 attention heads per layer
-- 128-dimensional embeddings  
-- 32-token context window
-- 10% dropout
-
-Why so small? Faster experiments, clearer signal, less risk of just memorizing everything.
-
-## Usage Examples
-
-Quick test of individual models:
 ```bash
-# Test the reversal model
-NANOGPT_CONFIG=../../comp560-nanoGPT/configurator.py \
-  python ../../comp560-nanoGPT/sample.py config/train_reverse.py --start="12345->"
-
-# Test the addition model
-NANOGPT_CONFIG=../../comp560-nanoGPT/configurator.py \
-  python ../../comp560-nanoGPT/sample.py config/train_addition.py --start="123+456->"
+python task_vector_conflict.py
+python cka.py --n_prompts 200
 ```
 
-Compose models in Python:
-```python
-from compose import load_model, create_composition
+Stratified composite evaluation (3 difficulty levels):
 
-model_A = load_model('out/reverse/ckpt.pt')
-model_B = load_model('out/addition/ckpt.pt')
-composed = create_composition(model_A, model_B, strategy='concat')
-# Fine-tune if needed...
+```bash
+python evaluate_stratified_composition.py --samples_per_level 50 --device auto
 ```
 
-## Results
+## Track B: Composition strategies (pipeline, concat, adapter)
 
-Evaluated all composition approaches on 100 test samples:
+This track trains reverse/addition/composed models from scratch with their own vocabularies, then evaluates different composition strategies.
 
-### Individual Models
-| Model    | Accuracy |
-|----------|----------|
-| Reversal | 100%     |
-| Addition | 100%     |
+### 1) Build datasets
 
-Both models perfectly learned their tasks.
-
-### Composition Strategies
-
-**Zero-shot Pipeline** (no training required)
+```bash
+python data/prepare_tokenized.py
+python data/generate_addition_test.py
+python data/generate_composed_test.py
 ```
-Reversal step:  100% ✓
-Full pipeline:   81% 
-Performance drop: 19%
+
+Optional scratchpad data:
+
+```bash
+python data/prepare_addition_scratchpad.py
 ```
-The addition model can't properly interpret the reversal model's output. They don't share the same internal representations (representation mismatch).
 
-**Layer Concatenation** (fine-tuned, 30 epochs)
+### 2) Train scratch models
+
+```bash
+NANOGPT_CONFIG=/Users/sonnguyen/comp560-nanoGPT/configurator.py \
+  python /Users/sonnguyen/comp560-nanoGPT/train.py composition_strategies/config/train_reverse.py
+
+NANOGPT_CONFIG=/Users/sonnguyen/comp560-nanoGPT/configurator.py \
+  python /Users/sonnguyen/comp560-nanoGPT/train.py composition_strategies/config/train_addition.py
+
+NANOGPT_CONFIG=/Users/sonnguyen/comp560-nanoGPT/configurator.py \
+  python /Users/sonnguyen/comp560-nanoGPT/train.py composition_strategies/config/train_composed.py
 ```
-Accuracy: 5%
-Training: 30 epochs on 10K samples
-Parameters: ~797K total
-Val loss: 0.71 → 0.34
+
+### 3) Evaluate the pipeline baseline
+
+```bash
+python composition_strategies/evaluate_composed.py --strategy pipeline --n 200 --device mps
+python composition_strategies/evaluate_composed.py --strategy baseline --n 200 --device mps
 ```
-Surprisingly poor performance. The model generates plausible-looking outputs (e.g., "800" instead of "869") but with wrong digits. Fine-tuning couldn't overcome the fundamental representation mismatch between the two independently trained models. The layers don't "speak the same language" internally.
 
-**Adapter Network** (trained, 100 epochs)
+### 4) Train and evaluate composition models
+
+Layer concatenation:
+
+```bash
+python composition_strategies/train_concat.py --epochs 50 --device mps
+python composition_strategies/evaluate_composition.py --strategy concat --n 200 --device mps
 ```
-Accuracy: 0%
-Training: 100 epochs on 10K samples
-Parameters: Only ~16K trainable (2% of full model)
-Val loss: 0.83 → 0.52
+
+Adapter network:
+
+```bash
+python composition_strategies/train_adapter.py --epochs 100 --device mps
+python composition_strategies/evaluate_composition.py --strategy adapter --n 200 --device mps
 ```
-Complete failure. The adapter learned to echo back modified input ("4 5 7 + 3") rather than bridge the representations. Despite low training loss, it failed to learn the actual composition. The adapter acts as a pattern matcher rather than a semantic bridge.
 
-**Task Arithmetic** (tested, not viable)
+### 5) Quick summary script
+
+```bash
+python composition_strategies/evaluate_all.py --n 200 --device mps
 ```
-Direct merge: <2% accuracy
-```
-Failed because models were trained from scratch, not fine-tuned from a shared base. Their weight spaces don't align geometrically.
 
-### Key Findings
-1. **Individual models work perfectly** - 100% accuracy on both tasks
-2. **Zero-shot composition has a 19% gap** - pipeline loses accuracy due to representation mismatch
-3. **Layer concatenation fails dramatically** - only 5% accuracy even after fine-tuning. The models' internal representations are incompatible
-4. **Adapter network fails completely** - 0% accuracy. Learned to echo input instead of bridging representations
-5. **Task arithmetic requires shared initialization** - doesn't work for scratch-trained models
-6. **Composition is fundamentally hard** - all tested approaches failed. Models trained independently develop incompatible internal representations
+## Data format notes
 
-### Next Experiments
-- Fine-tune layer concatenation model and measure sample efficiency vs end-to-end
-- Train adapter network with limited data
-- Test generalization on longer sequences (5-6 digits)
-- Compare all approaches quantitatively
+- Digits are space-separated to make positions explicit.
+- The shared-base track uses a unified vocabulary across all datasets in `data/mixed`, `data/reverse_shared`, and `data/addition_shared`.
+- The scratch track uses independent vocabularies in `data/reverse`, `data/addition`, and `data/composed`.
 
-## Related Work
+## Results and artifacts
 
-This whole idea of compositionality in neural networks asks: can you build complex behaviors by combining simpler pieces? Since transformers build up increasingly abstract representations layer by layer, maybe we can isolate and recombine the features they learn.
+Most evaluation scripts write CSV/TXT summaries into this folder. Common outputs include:
 
-**Papers that inspired this:**
-- **Neural Module Networks** (Andreas et al., 2016) - composing vision modules to answer questions
-- **Modular Transformers** (Csordás et al., 2021) - training task-specific modules that can work together
-- **Model Merging** (Wortsman et al., 2022) - averaging weights from models trained on different tasks  
-- **Task Arithmetic** (Ilharco et al., 2023) - the big one: adding and subtracting task vectors in weight space
+- TIES: `ties_results.txt`, `ties_results_table.md`, `ties_results_table_for_compare.csv`,
+  `ties_legacy_vs_canonical.csv`, `ties_sweep_canonical.txt`, `ties_sweep_legacy.txt`,
+  `ties_rows_for_compare.txt`.
+- DARE: `dare_results.txt`, `dare_results_no_rescale.txt`, `dare_results_table.csv`,
+  `dare_results_table_no_rescale.csv`, `dare_rows.txt`, `dare_norescale_rows.txt`,
+  `dare_vs_ties_comparison.csv`, `dare_norescale_vs_ties_comparison.csv`.
+- Composite benchmarks: `composite_benchmark_*.csv`, `composite_multiseed_*.csv`,
+  `composite_failure_samples_*.csv`.
+- Stratified composition: `stratified_composition_results.csv`,
+  `stratified_composition_results_smoke.csv`.
 
-I'm basically taking task arithmetic ideas and testing them on sequential reasoning tasks, plus trying alternative strategies when task arithmetic doesn't apply.
+These files are generated artifacts and can be safely deleted; rerunning the
+scripts will recreate them.
 
-## Credits
+## Notable results
 
-This extends ideas from the "Editing Models with Task Arithmetic" paper:
+- TIES merging at density 0.8, lambda 0.2 reaches 93% reverse and 100% addition, while the naive merge is 0%/0% in the same sweep. See [transformer-algebra/ties_results_table.md](transformer-algebra/ties_results_table.md).
+- DARE (no-rescale) is strongest at drop_rate 0.8, lambda 0.2 with 95.0% reverse and 99.5% addition. See [transformer-algebra/dare_results_table_no_rescale.csv](transformer-algebra/dare_results_table_no_rescale.csv).
+- Composite evaluation remains near-zero: the benchmark at density 0.8, lambda 0.2 yields 0-1% composite accuracy across base/naive/TIES, and the stratified benchmark shows 0% on L2/L3 for all models. See [transformer-algebra/composite_benchmark_d08_l02.csv](transformer-algebra/composite_benchmark_d08_l02.csv) and [transformer-algebra/stratified_composition_results.csv](transformer-algebra/stratified_composition_results.csv).
+
+## Known gotchas
+
+- Several scripts hard-code the nanoGPT path. Update it or add a symlink if you are not on the original machine.
+- Many scripts default to `mps` (Apple Silicon). Use `--device cpu` or `--device cuda` as needed.
+- For fine-tuning from the shared base, you must copy the base checkpoint into `out/reverse_ft/` and `out/addition_ft/` before running the fine-tune configs.
+
+## Related work
+
+- TIES-Merging (TIES): model merging with sign-based conflict resolution.
+- DARE: dropout-based sparsification of task vectors during merging.
+- Task arithmetic: editing/combining models via task vectors in weight space.
+
+## Citation
+
+This project is inspired by:
 
 ```bibtex
 @article{ilharco2023editing,
@@ -247,8 +255,22 @@ This extends ideas from the "Editing Models with Task Arithmetic" paper:
   journal={ICLR},
   year={2023}
 }
+
+@article{yadav2023ties,
+  title={TIES-Merging: Resolving Interference When Merging Models},
+  author={Yadav, Prateek and Tam, Derek and Choshen, Leshem and Raffel, Colin and Bansal, Mohit},
+  journal={arXiv preprint arXiv:2306.01708},
+  year={2023},
+  url={https://arxiv.org/abs/2306.01708}
+}
+
+@article{yu2023supermario,
+  title={Language Models are Super Mario: Absorbing Abilities from Homologous Models as a Free Lunch},
+  author={Yu, Le and Yu, Bowen and Yu, Haiyang and Huang, Fei and Li, Yongbin},
+  journal={arXiv preprint arXiv:2311.03099},
+  year={2023},
+  url={https://arxiv.org/abs/2311.03099}
+}
 ```
 
-Built on top of [nanoGPT](https://github.com/karpathy/nanoGPT) by Andrej Karpathy. Project for COMP 560.
-
-MIT License.
+Built on top of nanoGPT by Andrej Karpathy. Project for COMP 560.

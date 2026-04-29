@@ -27,22 +27,15 @@ arithmetic-scratchpad/
 │   ├── without_scratchpad.py      # Training config for baseline
 │   └── with_scratchpad.py         # Training config for scratchpad version
 ├── data/
-│   ├── generate_simple.py         # (unused - simple generator)
-│   ├── generate_limited.py        # (unused - limited generator)
 │   ├── prepare_tokenized.py       # Main script: generate + tokenize datasets
-│   ├── without_scratchpad/
-│   │   ├── train.txt              # Raw training data (baseline)
-│   │   ├── train.bin              # Tokenized training data
-│   │   ├── val.bin                # Tokenized validation data
-│   │   └── meta.pkl               # Vocabulary metadata
-│   └── with_scratchpad/
-│       ├── train.txt              # Raw training data (scratchpad)
-│       ├── train.bin
-│       ├── val.bin
-│       └── meta.pkl
+│   ├── generate_simple.py         # Legacy generator
+│   ├── generate_limited.py        # Legacy generator
+│   ├── without_scratchpad/        # Tokenized dataset (train.bin/val.bin/meta.pkl)
+│   └── with_scratchpad/           # Tokenized dataset (train.bin/val.bin/meta.pkl)
+├── without_scratchpad/            # Raw train.txt (+ tokenized copies)
+├── with_scratchpad/               # Raw train.txt (+ tokenized copies)
 ├── out/                           # Model checkpoints saved here
 ├── wandb/                         # Training logs
-└── analysis/                      # (empty, for future analysis)
 ```
 
 ## Usage

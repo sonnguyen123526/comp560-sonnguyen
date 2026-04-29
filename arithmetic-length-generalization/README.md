@@ -65,16 +65,8 @@ arithmetic-length-generalization/
 │   ├── generate_random_space.py # Generate random spaces dataset
 │   ├── generate_using_shifts.py # Generate cyclic shifts dataset
 │   ├── prepare_tokenized.py     # Tokenize datasets for training
-│   ├── random_spaces/           # Generated data (txt + bin)
-│   │   ├── train.txt
-│   │   ├── train.bin
-│   │   ├── val.bin
-│   │   └── meta.pkl
-│   └── cyclic_shifts/           # Generated data (txt + bin)
-│       ├── train.txt
-│       ├── train.bin
-│       ├── val.bin
-│       └── meta.pkl
+│   ├── random_spaces/           # Tokenized data (train.bin/val.bin/meta.pkl)
+│   └── cyclic_shifts/           # Tokenized data (train.bin/val.bin/meta.pkl)
 ├── out/                         # Model checkpoints saved here
 └── wandb/                       # Training logs
 ```
