@@ -1,141 +1,192 @@
 # Arithmetic with Scratchpad
 
-Can transformers learn multi-step reasoning better if we show them the intermediate steps? This experiment tests that idea using simple addition. Based on "How Far Can Transformers Reason? The Globality Barrier and Inductive Scratchpad" (Anil et al., 2024).
+This folder studies a simple but important question: does making intermediate arithmetic steps explicit help a small transformer learn addition better?
 
-## The Idea
+The experiment compares two dataset formats:
 
-When adding numbers, humans work column-by-column from right to left. Can we teach a transformer to do the same by showing it a "scratchpad" of intermediate steps?
+1. A direct input-output baseline, for example `123+456->579`
+2. A scratchpad format that exposes the column-wise computation, for example `123+456->3+6=9,2+5=7,1+4=5->579`
 
-**Without scratchpad (baseline):**
-```
-123+456->579
-```
-The model has to compute everything in one shot.
+The implementation is intentionally small and self-contained. It contains dataset generation, tokenization, and two nanoGPT training configs.
 
-**With scratchpad:**
-```
-123+456->3+6=9,2+5=7,1+4=5->579
-```
-The model sees the step-by-step work, potentially making it easier to learn the algorithm.
+## Contents
 
-## Project Structure
-
-```
+```text
 arithmetic-scratchpad/
 ├── README.md
 ├── config/
-│   ├── without_scratchpad.py      # Training config for baseline
-│   └── with_scratchpad.py         # Training config for scratchpad version
+│   ├── without_scratchpad.py
+│   └── with_scratchpad.py
 ├── data/
-│   ├── prepare_tokenized.py       # Main script: generate + tokenize datasets
-│   ├── generate_simple.py         # Legacy generator
-│   ├── generate_limited.py        # Legacy generator
-│   ├── without_scratchpad/        # Tokenized dataset (train.bin/val.bin/meta.pkl)
-│   └── with_scratchpad/           # Tokenized dataset (train.bin/val.bin/meta.pkl)
-├── without_scratchpad/            # Raw train.txt (+ tokenized copies)
-├── with_scratchpad/               # Raw train.txt (+ tokenized copies)
-├── out/                           # Model checkpoints saved here
-├── wandb/                         # Training logs
+│   ├── generate_simple.py
+│   ├── generate_limited.py
+│   ├── prepare_tokenized.py
+│   ├── without_scratchpad/
+│   └── with_scratchpad/
+├── without_scratchpad/
+└── with_scratchpad/
 ```
 
-## Usage
+The `without_scratchpad/` and `with_scratchpad/` directories are generated local artifacts that hold the raw text and tokenized files used by training.
 
-### 1. Generate datasets
+## What Is Here
+
+### `config/without_scratchpad.py`
+
+Baseline training config.
+
+- dataset: `without_scratchpad`
+- model: 4-layer GPT
+- heads: 4
+- embedding size: 128
+- batch size: 12
+- block size: 64
+- max iters: 2000
+- device: CPU
+
+### `config/with_scratchpad.py`
+
+Scratchpad training config.
+
+- dataset: `with_scratchpad`
+- same model size as the baseline for a fair comparison
+- block size: 128 to fit the longer target sequence
+- max iters: 2000
+- device: CPU
+
+### `data/generate_simple.py`
+
+Generates a very small single-digit addition dataset.
+
+Key behavior:
+
+- enumerates all `0-9 + 0-9` pairs
+- writes `without_scratchpad/train.txt` and `with_scratchpad/train.txt`
+- repeats the 100 unique examples many times to create a 50,000-sample training set
+
+This script is useful as a minimal sanity-check generator.
+
+### `data/generate_limited.py`
+
+Generates a limited 2-digit addition dataset over the range `10-50`.
+
+Key behavior:
+
+- writes `without_scratchpad/train.txt` and `with_scratchpad/train.txt`
+- produces a larger, still bounded curriculum than `generate_simple.py`
+- keeps the same scratchpad logic as the main dataset
+
+### `data/prepare_tokenized.py`
+
+Main dataset preparation script.
+
+It can:
+
+- generate training data
+- generate OOD test data with `--test`
+- skip generation with `--tokenize-only`
+- skip tokenization with `--generate-only`
+
+By default it produces:
+
+- `without_scratchpad/train.txt`
+- `with_scratchpad/train.txt`
+- `without_scratchpad/train.bin`, `without_scratchpad/val.bin`, `without_scratchpad/meta.pkl`
+- `with_scratchpad/train.bin`, `with_scratchpad/val.bin`, `with_scratchpad/meta.pkl`
+
+When invoked with `--test`, it writes test files instead of train files and uses longer numbers for out-of-distribution evaluation.
+
+## Typical Workflow
+
+### 1. Generate and tokenize data
+
+From `arithmetic-scratchpad/data/`:
 
 ```bash
-cd data
 python prepare_tokenized.py
 ```
 
-This generates both datasets (with and without scratchpad) and tokenizes them. By default:
-- 50,000 samples per dataset
-- 2-3 digit numbers
-- 90/10 train/val split
+Useful options:
 
-Options:
 ```bash
-# Custom parameters
 python prepare_tokenized.py --num_samples 100000 --max_digits 4
-
-# Only generate (skip tokenization)
 python prepare_tokenized.py --generate-only
-
-# Only tokenize existing files
 python prepare_tokenized.py --tokenize-only
-
-# Generate test set with longer numbers
 python prepare_tokenized.py --test --max_digits 5
 ```
 
-### 2. Train models
+### 2. Train the models
 
-Baseline (no scratchpad):
+Baseline:
+
 ```bash
 NANOGPT_CONFIG=../../comp560-nanoGPT/configurator.py \
   python -u ../../comp560-nanoGPT/train.py config/without_scratchpad.py
 ```
 
-With scratchpad:
+Scratchpad:
+
 ```bash
 NANOGPT_CONFIG=../../comp560-nanoGPT/configurator.py \
   python -u ../../comp560-nanoGPT/train.py config/with_scratchpad.py
 ```
 
-Both models use identical architecture (4 layers, 4 heads, 128d embeddings) so any performance difference is due to the scratchpad format.
-
-### 3. Sample from trained models
+### 3. Sample from a trained model
 
 ```bash
-# Baseline
 NANOGPT_CONFIG=../../comp560-nanoGPT/configurator.py \
   python -u ../../comp560-nanoGPT/sample.py config/without_scratchpad.py
+```
 
-# Scratchpad  
+```bash
 NANOGPT_CONFIG=../../comp560-nanoGPT/configurator.py \
   python -u ../../comp560-nanoGPT/sample.py config/with_scratchpad.py
 ```
 
-## Format Details
+## Data Format
 
-### Baseline Format
-Just input and output:
-```
+### Baseline
+
+The baseline keeps the task as direct sequence prediction:
+
+```text
 1+2->3
 12+34->46
 99+1->100
 ```
 
-### Scratchpad Format
-Shows the column-by-column work:
-```
+### Scratchpad
+
+The scratchpad format surfaces the arithmetic steps explicitly:
+
+```text
 12+34->2+4=6,1+3=4->46
 ```
 
-With carries:
-```
+Carries are represented inline:
+
+```text
 99+99->9+9=8c1,9+9+1=9c1,1->198
 ```
-- `9+9=8c1` means 9+9=18, write 8, carry 1
-- `9+9+1=9c1` means 9+9+carry=19, write 9, carry 1  
-- Final carry `1` becomes the leading digit
 
-The algorithm works right-to-left, matching how humans actually do addition.
+This representation is right-to-left, matching the standard addition algorithm.
 
-## Expected Results
+## Why This Folder Exists
 
-The scratchpad model should:
-- Converge faster (lower validation loss)
-- Get higher exact match accuracy
-- Generalize better to longer numbers
+This experiment isolates a single hypothesis: if the model sees the computation trace, does it learn addition more reliably than if it is asked to infer the entire algorithm from input-output pairs alone?
 
-Why? Because the scratchpad encodes the algorithm structure, making it easier for the model to learn the underlying computation rather than just memorizing input-output pairs.
+That makes this folder useful for comparing:
 
-## What to Analyze
+- direct mapping versus explicit computation
+- short-horizon fit versus longer-number generalization
+- raw accuracy versus actual sample quality
 
-- Compare validation loss curves
-- Measure exact match accuracy on test sets
-- Test generalization to 4-5 digit numbers (out of distribution)
-- Look at error patterns: where does the baseline fail? Carry errors? Specific digit positions?
+## Notes
+
+- The generated `without_scratchpad/` and `with_scratchpad/` directories are local artifacts and can be recreated from `data/`.
+- The model sizes are intentionally matched between conditions, so differences should be attributable to the scratchpad format rather than capacity.
+- `generate_simple.py` and `generate_limited.py` are legacy or alternative data generators; `prepare_tokenized.py` is the main entry point.
+- There is no separate evaluation harness in this folder. Generalization is typically assessed by generating longer test sets with `prepare_tokenized.py --test` and sampling from the trained checkpoints.
 
 ## Reference
 
@@ -151,5 +202,6 @@ Why? Because the scratchpad encodes the algorithm structure, making it easier fo
 ```
 
 Related work:
+
 - [Chain-of-Thought Prompting](https://arxiv.org/abs/2201.11903) (Wei et al., 2022)
 - [Show Your Work: Scratchpads for LMs](https://arxiv.org/abs/2112.00114) (Nye et al., 2021)

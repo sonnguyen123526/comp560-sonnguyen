@@ -1,99 +1,140 @@
-# Insert Spaces Between Characters
+# Insert Spaces
 
-**Goal:** Train GPT to insert spaces between letters (e.g., "hello" → "h e l l o")
+This folder explores a simple character-level transformation task: take an unspaced word like `hello` and produce `h e l l o`.
 
-## Setup
+The project is useful as a small negative control. It tests whether a tiny GPT-style model can learn a formatting transformation that is trivial for humans but awkward for a pure autoregressive language model.
 
-**Dataset:**
-- 3,000+ unique words (3-8 letters, a-z)
-- Format: `Input: hello Output: h e l l o`
-- ~1M characters total
+There are two parts:
 
-**Generate data:**
-```bash
-cd data/basic && python prepare.py
-```
+1. A GPT-based baseline built around the `data/basic/` dataset and the `config/basic.py` training config
+2. An exploratory `seq2seq_model_testing/` subfolder that tries encoder-decoder alternatives
 
-**Train model:**
-```bash
-NANOGPT_CONFIG=../../comp560-nanoGPT/configurator.py python -u ../../comp560-nanoGPT/train.py config/basic.py
-```
+## Contents
 
-**Sample from trained model:**
-```bash
-NANOGPT_CONFIG=../../comp560-nanoGPT/configurator.py python -u ../../comp560-nanoGPT/sample.py config/basic.py --num_samples=3 --max_new_tokens=100 --seed=2
-```
-
----
-
-## Experiment
-
-**Model:** 4-layer GPT (128-dim embeddings, 4 heads)
-- Batch size: 12
-- Learning rate: 1e-3
-- Dropout: 0.0
-- **Iterations: 2,000** (no warmup)
-- Training time: ~1-2 hours on CPU
-- Model parameters: 0.79M
-
-**Training Results:**
-| Iteration | Train Loss | Val Loss |
-|-----------|-----------|----------|
-| 1000 | 1.14 | 1.17 |
-| 2000 | 1.14 | 1.17 |
-
-Model size: 9.6 MB
-
-**Sample Outputs (seed=2):**
-```
-Input: zwlsmdz Output: r w l g m s f    (Expected: z w l s m d z)
-Input: zwvs Output: z w j d             (Expected: z w v s)
-Input: mykkn Output: m v i k n          (Expected: m y k k n)
-Input: pqreky Output: e q r d           (Expected: p q r e k y)
-```
-
----
-
----
-## Graph Loss
-# max_iters = 2000
----
-
-## Conclusions
-
-### What Didn't Work
-- **Model fails at task** - Generates wrong characters instead of just adding spaces
-- **Loss plateau insufficient** - Loss of 1.14 suggests model never truly learned the pattern
-- **Architecture too small** - 4 layers/128 dims may be inadequate for this task
-- **No dropout harmful** - Zero dropout didn't help; model neither memorized nor generalized
-- **Format confusion** - Model may be confused by "Input:" and "Output:" format instead of learning the transformation
-
-### What Worked ✓
-- **Training stability** - Loss converged and stayed stable (not diverging)
-- **Character-level processing** - Model can process character sequences
-- **Efficient size** - 9.6 MB model is compact and trains quickly on CPU
-
-### Key Insights
-- Loss alone doesn't tell the full story - need to check actual outputs
-- This task requires either: (1) larger model, (2) different architecture, or (3) simpler data format
-- Current approach treats it as language modeling, may need sequence-to-sequence architecture instead
-
----
-
-## File Structure
-
-```
+```text
 insert-spaces/
-├── README.MD              # This file
+├── README.MD
 ├── config/
-│   └── basic.py          # Model hyperparameters (4 layers, 128 embd, etc.)
+│   └── basic.py
 ├── data/
 │   └── basic/
-│       ├── prepare.py    # Generates dataset with space-insertion examples
-│       ├── train.bin     # Encoded training data (~1M chars)
-│       ├── val.bin       # Encoded validation data (same as train)
-│       └── meta.pkl      # Character vocabulary + encode/decode functions
-└── out/
-    └── basic/
-        └── ckpt.pt       # Trained model checkpoint (9.6 MB)
+│       ├── prepare.py
+│       ├── train.txt
+│       ├── val.txt
+│       ├── train.bin
+│       ├── val.bin
+│       └── meta.pkl
+└── seq2seq_model_testing/
+    ├── README.md
+    ├── simple_seq2seq_model.py
+    ├── train_simple_seq2seq.py
+    ├── sample_simple_seq2seq.py
+    ├── seq2seq_model.py
+    ├── train_seq2seq.py
+    └── sample_seq2seq.py
 ```
+
+## What Is Here
+
+### `config/basic.py`
+
+Training config for the GPT baseline.
+
+- 4-layer GPT
+- 4 attention heads
+- 128-dimensional embeddings
+- batch size 12
+- block size 64
+- 2,000 training iterations
+- CPU execution by default
+
+### `data/basic/prepare.py`
+
+Main dataset preparation script for the GPT baseline.
+
+It generates a character-level dataset in the format:
+
+```text
+Input: hello Output: h e l l o
+```
+
+Key behavior:
+
+- creates about 3,000 unique words
+- uses lowercase letters only
+- builds a roughly 1M-character dataset
+- writes `train.txt`, `val.txt`, `train.bin`, `val.bin`, and `meta.pkl`
+
+The file `prepare.py.bak` is a backup copy and is not part of the main workflow.
+
+## How To Use It
+
+### 1. Prepare the dataset
+
+From `insert-spaces/data/basic/`:
+
+```bash
+python prepare.py
+```
+
+This writes the raw text and tokenized files into the same directory.
+
+### 2. Train the GPT baseline
+
+From `insert-spaces/`:
+
+```bash
+NANOGPT_CONFIG=../../comp560-nanoGPT/configurator.py \
+  python -u ../../comp560-nanoGPT/train.py config/basic.py
+```
+
+### 3. Sample from the trained model
+
+```bash
+NANOGPT_CONFIG=../../comp560-nanoGPT/configurator.py \
+  python -u ../../comp560-nanoGPT/sample.py config/basic.py \
+  --num_samples=3 --max_new_tokens=100 --seed=2
+```
+
+## Data Format
+
+The dataset uses a clear prompt style:
+
+```text
+Input: hello Output: h e l l o
+```
+
+The intent is to make the transformation explicit while still framing it as a character-level prediction task.
+
+## Seq2Seq Experiments
+
+The `seq2seq_model_testing/` folder investigates whether a more task-appropriate encoder-decoder architecture handles the problem better than GPT.
+
+It contains two variants:
+
+1. `simple_seq2seq_model.py` and `train_simple_seq2seq.py` for a minimal GRU-based encoder-decoder
+2. `seq2seq_model.py` and `train_seq2seq.py` for a GRU model with attention
+
+The bundled README in that subfolder documents the architecture choices and notes that the results were still exploratory.
+
+## Why This Folder Exists
+
+This is a useful diagnostic task because success or failure is informative:
+
+- If GPT solves it easily, then the task is too easy to distinguish architecture choices.
+- If GPT struggles, the failure is a reminder that not every transformation is a good fit for a decoder-only language model.
+- If seq2seq helps, that supports the idea that the architecture matters as much as the data.
+
+## Notes
+
+- The `data/basic/` directory is the source of truth for the GPT baseline.
+- `train.bin`, `val.bin`, and `meta.pkl` are generated artifacts and can be recreated by rerunning `prepare.py`.
+- The seq2seq subfolder is experimental and separate from the GPT baseline.
+- This folder does not currently include a unified evaluation harness; sampling and manual inspection are the primary checks.
+
+## Reference
+
+Relevant sequence-to-sequence references:
+
+- [Sequence to Sequence Learning with Neural Networks](https://arxiv.org/abs/1409.3215)
+- [Neural Machine Translation by Jointly Learning to Align and Translate](https://arxiv.org/abs/1409.0473)

@@ -1,130 +1,167 @@
 # Arithmetic Length Generalization
 
-Testing if transformers can learn addition on short numbers and generalize to longer ones. Based on "How Far Can Transformers Reason? The Globality Barrier and Inductive Scratchpad" (Anil et al., 2024).
+This folder studies whether a small transformer trained on short addition problems can generalize to much longer inputs when the computation is made explicit in the training data.
 
-## The Challenge
+The experiment follows the scratchpad ideas from *How Far Can Transformers Reason? The Globality Barrier and Inductive Scratchpad* and implements two dataset formats from that line of work:
 
-Can a model trained on 2-3 digit addition solve 10+ digit addition? Normally no, but the paper shows two scratchpad formats that enable length generalization by making the algorithm explicit.
+1. Random spaces with pointer-style position markers
+2. Cyclic shifts with stepwise state tracking
 
-## Two Approaches
+The scope of this folder is intentionally narrow: it contains data generators, tokenization, and training configs for these two formats.
 
-### Random Spaces Method
+## Contents
 
-Embeds numbers with random underscores, then shows explicit step-by-step computation with position pointers.
-
-**Input:**
-```
-94_+_3__1=
-```
-
-**Scratchpad output:**
-```
-<START>[01]4[08]1c0r5$xgwg#[00]9[05]3c1r25$xgw#[-1]_[03]_c0r125$xg<EOS>
-```
-
-Reading this:
-- `[01]` and `[08]` are pointers to digit positions
-- `c0`, `c1` are carry values
-- `r5` is the running result (builds right-to-left)
-- Random text (`$xgwg`) forces position-invariant learning
-
-Paper result: Train on 10 digits → test on 18-20 digits ✓
-
-### Cyclic Shifts Method
-
-Uses cyclic rotation with explicit state tracking at each step.
-
-**Input:**
-```
-fs$46+ih$98=
-```
-Each number gets a random prefix before the `$` marker.
-
-**Scratchpad output:**
-```
-$kckn|0#6fs$4+8ih$9=4$kck|1#46fs$+98ih$=44$kc|1#144$kc<EOS>
-```
-
-Reading this:
-- States separated by `#`
-- Each state: `x[i]+y[i]=ans[i]|c[i]`
-- Numbers rotate right each step (cyclic shift)
-- `$` marker moves through the computation
-
-Paper result: Train on 4 digits → test on 26-30 digits ✓
-
-## Project Structure
-
-```
+```text
 arithmetic-length-generalization/
 ├── README.md
 ├── config/
-│   ├── random_spaces.py         # Config for random spaces method
-│   └── cyclic_shifts.py         # Config for cyclic shifts method
+│   ├── random_spaces.py
+│   └── cyclic_shifts.py
 ├── data/
-│   ├── generate_random_space.py # Generate random spaces dataset
-│   ├── generate_using_shifts.py # Generate cyclic shifts dataset
-│   ├── prepare_tokenized.py     # Tokenize datasets for training
-│   ├── random_spaces/           # Tokenized data (train.bin/val.bin/meta.pkl)
-│   └── cyclic_shifts/           # Tokenized data (train.bin/val.bin/meta.pkl)
-├── out/                         # Model checkpoints saved here
-└── wandb/                       # Training logs
+│   ├── generate_random_space.py
+│   ├── generate_using_shifts.py
+│   ├── prepare_tokenized.py
+│   ├── random_spaces/
+│   └── cyclic_shifts/
 ```
 
-## Usage
+## What Is Here
 
-### Generate datasets
+### `config/random_spaces.py`
+
+Training configuration for the random-spaces dataset.
+
+- `dataset = 'random_spaces'`
+- 4-layer GPT
+- 4 attention heads
+- 128-dimensional embeddings
+- CPU execution by default
+- `max_iters = 2000`
+
+### `config/cyclic_shifts.py`
+
+Training configuration for the cyclic-shifts dataset.
+
+- `dataset = 'cyclic_shifts'`
+- same model size and training budget as the random-spaces run
+- CPU execution by default
+
+### `data/generate_random_space.py`
+
+Generates addition examples with random underscores and an explicit scratchpad.
+
+Key behavior:
+
+- Creates `random_spaces/train.txt`
+- Supports `--test` to write `random_spaces/test.txt`
+- Supports `--max_digits` and `--num_samples`
+- Uses right-to-left addition with pointer markers and carry tracking
+
+### `data/generate_using_shifts.py`
+
+Generates the cyclic-shifts representation from the paper.
+
+Key behavior:
+
+- Creates `cyclic_shifts/train.txt`
+- Supports `--test` to write `cyclic_shifts/test.txt`
+- Supports `--max_digits` and `--num_samples`
+- Encodes the running computation as a sequence of rotated states
+
+### `data/prepare_tokenized.py`
+
+Tokenizes the generated text datasets into nanoGPT-ready binary files.
+
+It reads:
+
+- `random_spaces/train.txt`
+- `cyclic_shifts/train.txt`
+
+and writes:
+
+- `random_spaces/train.bin`, `random_spaces/val.bin`, `random_spaces/meta.pkl`
+- `cyclic_shifts/train.bin`, `cyclic_shifts/val.bin`, `cyclic_shifts/meta.pkl`
+
+## How To Use It
+
+### 1. Generate the datasets
+
+From `arithmetic-length-generalization/data/`:
 
 ```bash
-cd data
-
-# Random spaces method
 python generate_random_space.py
-
-# Cyclic shifts method  
 python generate_using_shifts.py
-
-# Tokenize both
-python prepare_tokenized.py
-
-cd ..
 ```
 
-### Train models
+Optional test sets:
+
+```bash
+python generate_random_space.py --test --max_digits 5
+python generate_using_shifts.py --test --max_digits 5
+```
+
+### 2. Tokenize for training
+
+```bash
+python prepare_tokenized.py
+```
+
+### 3. Train with nanoGPT
 
 Random spaces:
+
 ```bash
 NANOGPT_CONFIG=../../comp560-nanoGPT/configurator.py \
   python -u ../../comp560-nanoGPT/train.py config/random_spaces.py
 ```
 
 Cyclic shifts:
+
 ```bash
 NANOGPT_CONFIG=../../comp560-nanoGPT/configurator.py \
   python -u ../../comp560-nanoGPT/train.py config/cyclic_shifts.py
 ```
 
-### Test on longer numbers
+## Data Format
 
-After training, generate test data with more digits and run inference to check if the model generalizes.
+### Random spaces
 
-## Why This Works
+The input is a short addition problem with underscores inserted as noise. The target is a scratchpad that exposes:
 
-The key insight: explicitly encoding algorithmic structure helps models learn the underlying computation rather than memorizing patterns.
+- digit pointers
+- per-step carries
+- the running answer state
+- start and end sentinels
 
-- **Position tracking** (pointers/shifts) breaks positional bias
-- **Random padding** forces position-invariant representations  
-- **Step-by-step states** show the recursive structure
-- Model learns the algorithm, not just the training distribution
+The goal is to encourage the model to learn an algorithm, not just a string mapping.
 
-## Comparison to Simple Scratchpad
+### Cyclic shifts
 
-The `arithmetic-scratchpad/` folder has a simpler format:
-```
-25+37->5+7=2c1,2+3+1=6->62
-```
+The input uses randomized prefixes and a `$` marker. The target tracks the computation as the numbers rotate through a sequence of states.
 
-That's easier to train but doesn't generalize to longer inputs. These methods trade simplicity for length generalization.
+This representation is more structured than plain addition and is designed to make long-range generalization easier.
+
+## Why This Folder Exists
+
+The core question is not whether a transformer can fit short addition. It is whether an explicit algorithmic representation can help the model extrapolate beyond the length regime it saw during training.
+
+In practice, this folder is useful for comparing:
+
+- direct sequence learning versus explicit computation traces
+- pointer-like representations versus state-rotation representations
+- short-length fit versus longer-length generalization
+
+## Relationship To `arithmetic-scratchpad/`
+
+The `arithmetic-scratchpad/` project uses a simpler scratchpad format and is easier to train, but it is not aimed at the same extrapolation problem.
+
+This folder is the more structured, length-generalization-oriented version of that idea.
+
+## Notes
+
+- The generated binary datasets are local artifacts and can be recreated from the scripts in `data/`.
+- The training configs are intentionally small and CPU-friendly.
+- There is no separate evaluation harness in this folder; generalization is tested by generating longer test examples with the `--test` flag and sampling from the trained model.
 
 ## Reference
 

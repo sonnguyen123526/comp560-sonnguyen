@@ -86,6 +86,8 @@ Each experiment directory follows the same general pattern:
 - `out/` for checkpoints, when present locally
 - `wandb/` for logs, when used
 
+Some folders also include extra experiment-specific subdirectories, such as `seq2seq_model_testing/` under `insert-spaces/` and `composition_strategies/` under `transformer-algebra/`.
+
 Generated datasets, checkpoints, and evaluation artifacts are intentionally not treated as source-of-truth files. Most of them are reproducible from the scripts in each project and are ignored by git.
 
 ## Setup
