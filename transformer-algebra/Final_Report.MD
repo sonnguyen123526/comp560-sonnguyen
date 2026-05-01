@@ -66,7 +66,7 @@ The central negative result is that source-task retention does not translate int
 
 ### 4.3 Execution-Space Results
 
-The execution-space composition experiments are more encouraging, though still imperfect. I directly reproduced a small CPU spot-check of the saved checkpoints on May 1, 2026 using the repository’s own evaluation code. On 50 held-out synthetic samples, the zero-shot pipeline achieved 100.0% accuracy on the reversal substep and 80.0% end-to-end accuracy on reverse-then-add. Under the same 50-sample check, the directly trained composed baseline achieved 70.0% accuracy. These numbers should be treated as lightweight validation rather than the main benchmark, but they establish an important point: once the intermediate interface is made explicit in string space, sequential composition becomes substantially more viable than in pure weight space.
+The execution-space composition experiments are more encouraging, though still imperfect. I directly reproduced a small CPU spot-check on locally generated checkpoints on May 1, 2026 using the repository’s own evaluation code. On 50 held-out synthetic samples, the zero-shot pipeline achieved 100.0% accuracy on the reversal substep and 80.0% end-to-end accuracy on reverse-then-add. Under the same 50-sample check, the directly trained composed baseline achieved 70.0% accuracy. These numbers should be treated as lightweight validation rather than the main benchmark, but they establish an important point: once the intermediate interface is made explicit in string space, sequential composition becomes substantially more viable than in pure weight space.
 
 The error patterns are also revealing. In the reproduced pipeline evaluation, many failures occur when reversed numbers contain leading zeros. Examples such as `381 + 350`, for which the gold answer is `236`, are predicted as `1136`; similarly, `990 + 106` should yield `700` but is predicted as `1500`. This suggests that the addition model is not consistently calibrated to the surface form emitted by the reversal model, particularly when reversal changes effective digit length. In other words, even the stronger pipeline result is limited by interface mismatch rather than by the absence of the underlying subskills.
 
@@ -259,13 +259,6 @@ This appendix summarizes the main contents of the `transformer-algebra` folder s
 4. Run the shared-base evaluations through `task_arithmetic.py`, `ties.py`, `dare.py`, `task_vector_conflict.py`, `cka.py`, and `evaluate_stratified_composition.py`.
 5. Train the scratch reverse/addition/composed checkpoints with the configs under `composition_strategies/config/`.
 6. Evaluate execution-space composition with `composition_strategies/evaluate_composed.py`, `evaluate_composition.py`, and `evaluate_addition_scratchpad.py`.
-
-### 7.5 Outputs Used in This Report
-
-- Shared-base checkpoints: `out/base/ckpt.pt`, `out/reverse_ft/ckpt.pt`, `out/addition_ft/ckpt.pt`
-- Scratch checkpoints: `out/reverse/ckpt.pt`, `out/addition/ckpt.pt`, `out/composed/ckpt.pt`
-- Optional composition checkpoints: `out/concat/ckpt.pt`, `out/adapter/adapter.pt`
-- Scratchpad checkpoint: `out/addition_scratchpad/ckpt.pt`
 
 ## 8. References
 
