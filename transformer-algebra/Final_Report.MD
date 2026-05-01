@@ -54,15 +54,15 @@ This experimental design is well chosen because it separates two hypotheses that
 
 ### 4.1 Source-Task Retention
 
-The most robust result in the folder is that shared-base merging preserves source-task competence far better than naive averaging. In `ties_results_table.md`, naive merging at full scale yields 0.0% accuracy on both reverse and addition. By contrast, low-lambda TIES models are strong on both tasks: for example, density `0.8` with lambda `0.2` reaches 93.0% reverse accuracy and 100.0% addition accuracy, while density `1.0` with lambda `0.2` reaches 93.0% and 100.0%, respectively. The qualitative pattern is stable across the table: small merge magnitudes preserve task skill, whereas larger lambdas rapidly destroy it.
+The most robust result in the folder is that shared-base merging preserves source-task competence far better than naive averaging. As shown in Table 2, naive merging at full scale yields 0.0% accuracy on both reverse and addition. By contrast, low-lambda TIES models are strong on both tasks: for example, density `0.8` with lambda `0.2` reaches 93.0% reverse accuracy and 100.0% addition accuracy, while density `1.0` with lambda `0.2` reaches 93.0% and 100.0%, respectively. The qualitative pattern is stable across the table: small merge magnitudes preserve task skill, whereas larger lambdas rapidly destroy it.
 
 The task-arithmetic baseline is useful precisely because it fails in an interpretable way. In a direct 200-sample CPU sweep reproduced from `task_arithmetic.py`, single-task scaling behaves sensibly: addition-only performance stays between 97.0% and 100.0% across lambda values, and reverse-only performance stays between 95.0% and 100.0%. But when both task vectors are added simultaneously, performance deteriorates sharply: at lambda `0.2`, the merged model still reaches 91.0% reverse and 94.5% addition, but by lambda `0.4` both tasks fall to roughly 51%, by lambda `0.6` they collapse to about 5%, and at lambda `0.8` and `1.0` both are 0.0%. This is exactly the behavior one would expect if the individual task vectors are meaningful but interfere destructively when superposed without conflict resolution.
 
-DARE shows the same high-level behavior and, in the checked-in no-rescale artifact `dare_results_table_no_rescale.csv`, is even stronger numerically. The best reported setting, drop rate `0.8` with lambda `0.2`, achieves 95.0% reverse and 99.5% addition accuracy. More importantly, DARE degrades more gracefully as lambda increases: at drop rate `0.8`, lambda `0.8` still retains 91.5% reverse and 91.0% addition accuracy. From a model-editing perspective, this is a strong positive result. Shared-base fine-tunes do carry reusable task directions, and sparsified merging can preserve them. Relative to naive task arithmetic, both TIES and DARE therefore appear not merely as incremental improvements but as qualitatively different regimes: they convert catastrophic interference into a controlled trade-off.
+DARE shows the same high-level behavior and, as summarized in Table 3, is even stronger numerically. The best reported setting, drop rate `0.8` with lambda `0.2`, achieves 95.0% reverse and 99.5% addition accuracy. More importantly, DARE degrades more gracefully as lambda increases: at drop rate `0.8`, lambda `0.8` still retains 91.5% reverse and 91.0% addition accuracy. From a model-editing perspective, this is a strong positive result. Shared-base fine-tunes do carry reusable task directions, and sparsified merging can preserve them. Relative to naive task arithmetic, both TIES and DARE therefore appear not merely as incremental improvements but as qualitatively different regimes: they convert catastrophic interference into a controlled trade-off.
 
 ### 4.2 Compositional Failure in Weight Space
 
-The central negative result is that source-task retention does not translate into composed-task success. In `composite_benchmark_d08_l02.csv`, the shared-base model, single-task fine-tunes, naive merge, and TIES merge all score essentially zero on reverse-then-add, with accuracies between 0.0 and 1.0%. The more diagnostic stratified benchmark in `stratified_composition_results.csv` sharpens the interpretation. On the easiest level, where reversal is effectively identity for one-digit inputs, models can score modestly above zero; for example, `Addition FT Only` reaches 14.0% on level 1. But all principal models collapse to 0.0% on level 2 and level 3, and overall accuracy remains between 0.0% and 4.7%. This is compelling evidence that the failure mode is not random noise but a specific inability to realize the required sequential interface.
+The central negative result is that source-task retention does not translate into composed-task success. As shown in Tables 4 and 5, the shared-base model, single-task fine-tunes, naive merge, and TIES merge all score essentially zero on reverse-then-add, with accuracies between 0.0 and 1.0% on the composite benchmark. The more diagnostic stratified benchmark sharpens the interpretation. On the easiest level, where reversal is effectively identity for one-digit inputs, models can score modestly above zero; for example, `Addition FT Only` reaches 14.0% on level 1. But all principal models collapse to 0.0% on level 2 and level 3, and overall accuracy remains between 0.0% and 4.7%. This is compelling evidence that the failure mode is not random noise but a specific inability to realize the required sequential interface.
 
 ### 4.3 Execution-Space Results
 
@@ -82,7 +82,7 @@ The scratchpad experiment yields an additional negative result that is worth inc
 
 ### 4.6 Embedded Results Tables
 
-Because the generated result artifacts are excluded from version control, the main quantitative tables are reproduced directly below so the report remains self-contained.
+The main quantitative tables are reproduced directly below for easy reference.
 
 Table 1. Task arithmetic sweep reproduced from `task_arithmetic.py` on 200 held-out samples.
 
@@ -202,19 +202,19 @@ This project demonstrates that capability preservation and compositional general
 
 ### 6.1 Result Consistency
 
-Several limitations should be stated plainly. First, the result artifacts are not perfectly version-consistent. The README, `ties_results_table.md`, and comparison CSVs report slightly different percentages for nominally similar TIES settings, which likely reflects evaluator revisions, different sample sizes, or seed differences. The qualitative conclusion is stable, but exact headline numbers should be cited from a single artifact at a time.
+Several limitations should be stated plainly. First, the recorded outputs are not perfectly version-consistent. The README and earlier result summaries report slightly different percentages for nominally similar TIES settings, which likely reflects evaluator revisions, different sample sizes, or seed differences. The qualitative conclusion is stable, but exact headline numbers should be cited from a single summary at a time.
 
 ### 6.2 Reproducibility and Interface Issues
 
-Second, the composition-strategy code exposes real reproducibility issues. The checked-in evaluation helpers rely on brittle relative paths and, more seriously, on incompatible tokenizers. The standalone reverse dataset uses a 14-symbol vocabulary, whereas the composed-task tokenizer uses 15 symbols. As a result, the concat and adapter evaluators can fail with an embedding index error when composed-task token IDs are passed through reverse-model embeddings. This is not merely an engineering nuisance; it is direct evidence that representational interfaces were not fully unified across the composition track. In practice, this means the layer-concat and adapter experiments are better interpreted as attempted research directions than as fully stabilized baselines.
+The composition-strategy code exposes real reproducibility issues. The checked-in evaluation helpers rely on brittle relative paths and, more seriously, on incompatible tokenizers. The standalone reverse dataset uses a 14-symbol vocabulary, whereas the composed-task tokenizer uses 15 symbols. As a result, the concat and adapter evaluators can fail with an embedding index error when composed-task token IDs are passed through reverse-model embeddings. This is not merely an engineering nuisance; it is direct evidence that representational interfaces were not fully unified across the composition track. In practice, this means the layer-concat and adapter experiments are better interpreted as attempted research directions than as fully stabilized baselines.
 
 ### 6.3 Limits of the Current Benchmark
 
-Third, the shared-base benchmarks convincingly show preservation of source tasks but do not yet provide a positive demonstration of abstract algorithmic composition. The near-zero results on the composite benchmark imply that merged parameters do not by themselves induce a latent program that first reverses and then adds. More diagnostic probing could strengthen this claim, for example by logging intermediate generations, aligning hidden states across tasks, or introducing explicit interface supervision.
+The shared-base benchmarks convincingly show preservation of source tasks but do not yet provide a positive demonstration of abstract algorithmic composition. The near-zero results on the composite benchmark imply that merged parameters do not by themselves induce a latent program that first reverses and then adds. More diagnostic probing could strengthen this claim, for example by logging intermediate generations, aligning hidden states across tasks, or introducing explicit interface supervision.
 
 ### 6.4 Scope Limits
 
-Finally, the entire study is intentionally small scale. All models are tiny character-level transformers trained on synthetic arithmetic and string-reversal tasks. This is a strength for interpretability, but it limits external validity. The broader lesson is therefore conceptual rather than directly application-ready: in small transformers, shared-base task vectors can preserve skills, but reliable composition appears to require more than weight-space superposition. It requires aligned tokenization, aligned intermediate representations, and training objectives that make the interface between subtasks explicit.
+The entire study is intentionally small scale. All models are tiny character-level transformers trained on synthetic arithmetic and string-reversal tasks. This is a strength for interpretability, but it limits external validity. The broader lesson is therefore conceptual rather than directly application-ready: in small transformers, shared-base task vectors can preserve skills, but reliable composition appears to require more than weight-space superposition. It requires aligned tokenization, aligned intermediate representations, and training objectives that make the interface between subtasks explicit.
 
 ## 7. Appendix: Repository Coverage
 
@@ -266,8 +266,6 @@ This appendix summarizes the main contents of the `transformer-algebra` folder s
 - Scratch checkpoints: `out/reverse/ckpt.pt`, `out/addition/ckpt.pt`, `out/composed/ckpt.pt`
 - Optional composition checkpoints: `out/concat/ckpt.pt`, `out/adapter/adapter.pt`
 - Scratchpad checkpoint: `out/addition_scratchpad/ckpt.pt`
-
-The report’s embedded tables were included specifically so the document remains complete even when generated CSV or markdown result files are excluded from version control.
 
 ## 8. References
 
